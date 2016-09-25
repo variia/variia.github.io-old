@@ -1,24 +1,108 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Ivan Vari]]></title>
-  <link href="http://variia.github.io/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-09-25T13:25:18+02:00</updated>
-  <id>http://variia.github.io/</id>
-  <author>
-    <name><![CDATA[Ivan Vari]]></name>
-    
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Hands-on With Couchbase - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
 
   
-  <entry>
-    <title type="html"><![CDATA[Hands-on With Couchbase]]></title>
-    <link href="http://variia.github.io/hands-on-with-couchbase/"/>
-    <updated>2013-05-12T09:42:09+02:00</updated>
-    <id>http://variia.github.io/hands-on-with-couchbase</id>
-    <content type="html"><![CDATA[<p>It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
+  <meta name="description" content="It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
+Couchbase is now our &hellip;">
+  <meta name="keywords" content="couchbase,client,performance,speed,latency,scaling,benchmarking,scaling,clustering">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/hands-on-with-couchbase/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Hands-on With Couchbase</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-05-12T09:42:09+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>9:42 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
 challenges.</p>
@@ -154,7 +238,7 @@ was constantly running during our benchmarks tests)</li>
 
 <h2>Results and Conclusion</h2>
 
-<p>  <img src="http://variia.github.io/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
+<p>  <img src="/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
 
 <ul>
 <li>Couchbase scaled very well during our test, we achieved <strong>400 000 GET requests / second</strong> with an average latency of <strong>400us (micro-second)</strong>, 99th = 4ms
@@ -240,7 +324,124 @@ actively requested data sets so if you request something frequently, you get bet
 improve bucket sharding, reduce network generated interrupts.</p>
 
 <p>In nutshell: Couchbase performs better under pressure but you have to keep the pressure within 80% of your maximum throughput to maintain lowest latency.</p>
-]]></content>
-  </entry>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
   
-</feed>
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2013-05-12T09:42:09+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>9:42 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/hands-on-with-couchbase/" data-via="" data-counturl="http://variia.github.io/hands-on-with-couchbase/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/clustering/'>clustering (1)</a></li><li><a href='/blog/categories/database/'>database (1)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(1)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(1)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
