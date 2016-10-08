@@ -4,7 +4,7 @@
   <title><![CDATA[Ivan Vari]]></title>
   <link href="http://variia.github.io/atom.xml" rel="self"/>
   <link href="http://variia.github.io/"/>
-  <updated>2016-09-25T13:31:25+02:00</updated>
+  <updated>2016-10-08T06:12:43+02:00</updated>
   <id>http://variia.github.io/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,1884 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>
+    <link href="http://variia.github.io/conditional-snat-with-irule-on-f5/"/>
+    <updated>2015-09-14T23:03:35+02:00</updated>
+    <id>http://variia.github.io/conditional-snat-with-irule-on-f5</id>
+    <content type="html"><![CDATA[<p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
+
+<p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
+services such as Google, Amazon, Akamai, etc serve requests based on their source but occasionally they get it wrong so I needed a way to control what netblock my request
+is addressed out of.</p>
+
+<!--more-->
+
+
+<p>Furthermore, some of our services require one-to-one IP mappings so I had to come up with a solution that solves the following:</p>
+
+<ul>
+<li>check if the destination address is on the target list</li>
+<li>check if the source of the request has one-to-one mapping for outgoing IP</li>
+<li>if it does and the destination is on our target list then rewrite the address to the matched map</li>
+<li>if it does not have one-to-one map and the the destination is on our target list then rewrite the address to the <em>default</em> NAT address</li>
+<li>otherwise do nothing, send packet out with its original source address</li>
+</ul>
+
+
+<figure class='code'><figcaption><span>Data group for destination targets</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> data-group internal snat_for_destination <span class="k">{</span>
+</span><span class='line'>    <span class="nv">records</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">8.8.8.8</span><span class="o">/</span><span class="mi">32</span> <span class="k">{</span>
+</span><span class='line'>            <span class="nv">data</span> googledns
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'>    <span class="nv">type</span> ip
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What matters here is the key (IP), the value (googledns) is just a comment although you can use it in logging statement if you want.</p>
+
+<figure class='code'><figcaption><span>Data group for one-to-one mapping</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> data-group internal snat_dmz_to_wan_map <span class="k">{</span>
+</span><span class='line'>    <span class="nv">records</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">1.2.3.4</span><span class="o">/</span><span class="mi">32</span> <span class="k">{</span>
+</span><span class='line'>            <span class="nv">data</span> <span class="mf">4.3</span>.2.1
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'>    <span class="nv">type</span> ip
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>iRule</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> rule snat_dmz_to_wan_map <span class="k">{</span>
+</span><span class='line'>    <span class="nv">when</span> CLIENT_ACCEPTED <span class="k">{</span>
+</span><span class='line'>    <span class="c"># https://devcentral.f5.com/wiki/iRules.class.ashx?lc=1</span>
+</span><span class='line'>    <span class="c"># check IF the request&#39;s destination IP is in given match list</span>
+</span><span class='line'>    <span class="k">if</span> <span class="k">{</span> <span class="k">[</span><span class="nv">class</span> match <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>local_addr<span class="k">]</span> equals snat_for_destination<span class="k">]}</span> <span class="k">{</span>
+</span><span class='line'>        <span class="c"># pick IP based 1-to-1 SNAT mapping for connecting client from given list</span>
+</span><span class='line'>        <span class="k">if</span> <span class="k">{</span> <span class="k">[</span><span class="nv">class</span> match <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>client_addr<span class="k">]</span> equals snat_dmz_to_wan_map<span class="k">]}</span> <span class="k">{</span>
+</span><span class='line'>            <span class="c"># set variable for matched address object</span>
+</span><span class='line'>            <span class="k">set</span> snat_addr <span class="k">[</span><span class="nv">class</span> match <span class="o">-</span>value <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>client_addr<span class="k">]</span> equals snat_dmz_to_wan_map<span class="k">]</span>
+</span><span class='line'>            <span class="nv">log</span> local0. <span class="s2">&quot;Connection from [IP::client_addr] to [IP::local_addr] rewrite as $snat_addr \[iSNAT\]&quot;</span>
+</span><span class='line'>            <span class="nv">snat</span> <span class="nv">$snat_addr</span>
+</span><span class='line'>        <span class="k">}</span> <span class="k">else</span> <span class="k">{</span>
+</span><span class='line'>            <span class="c"># on failed map lookup, default to F5&#39;s floating address</span>
+</span><span class='line'>            <span class="nv">log</span> local0. <span class="s2">&quot;Connection from [IP::client_addr] to [IP::local_addr] automap as 5.6.7.8 \[iSNAT\]&quot;</span>
+</span><span class='line'>            <span class="nv">snat</span> automap
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span> <span class="k">else</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">forward</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, the only thing we need to do is to add this resource to the required Virtual Server object.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
+    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <updated>2015-06-06T14:27:29+02:00</updated>
+    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
+
+<p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
+to pump few hundred Gigs across every day and fast. After about 20 minutes or so, everything started to slow down for an unknown reason.</p>
+
+<!--more-->
+
+
+<p>Our choice for VPN solution was OpenVPN due to some limitations caused by the managed network at the german side, so we built the tunnel and managed to get a reasonable link
+with ~20ms TTL, initial throughput tests showed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span> 4<span class="o">]</span> 0.0-30.1 sec <span class="m">170</span> MBytes 47.5 Mbits/sec
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It was not so flash but I did not suspect anything at that point, I accepted it as the capability of the tunnel. Further investigation however revealed TX packet drops on the
+tunnel interface:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>tun1 Link encap:UNSPEC HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+</span><span class='line'> inet addr:10.0.0.129 P-t-P:10.0.0.130 Mask:255.255.255.255
+</span><span class='line'> UP POINTOPOINT RUNNING NOARP MULTICAST MTU:1500 Metric:1
+</span><span class='line'> RX packets:7409196373 errors:0 dropped:0 overruns:0 frame:0
+</span><span class='line'> TX packets:6084526548 errors:0 dropped:2642021 overruns:0 carrier:0
+</span><span class='line'> collisions:0 txqueuelen:100
+</span><span class='line'> RX bytes:941878733670 <span class="o">(</span>877.1 GiB<span class="o">)</span> TX bytes:3395805058712 <span class="o">(</span>3.0 TiB<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seemed that the tunnel is not being able to keep up with the amount of traffic it received. After some reading, it turned out, that OpenVPN sets
+<a href="http://en.wikipedia.org/wiki/Ifconfig" target="_blank">txqueuelen</a> parameter to 100 as default for the tunnel interfaces on both, client and server. It is essentially
+a buffer, and managed by the network scheduler.</p>
+
+<p>The solution was to set this to 1000, identical to the physical interface configurations:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>grep txqueuelen /etc/openvpn/server-udp.conf
+</span><span class='line'>txqueuelen 1000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After restarting OpenVPN on both, server and client side, there was no packet drop on the tunnel interfaces and the throughput was better too:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span>  4<span class="o">]</span>  0.0-30.3 sec   <span class="m">267</span> MBytes  73.9 Mbits/sec
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For further optimisation, visit the official <a href="https://community.openvpn.net/openvpn/wiki/Gigabit_Networks_Linux" target="_blank">Linux guide</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Merging Pillars in SaltStack]]></title>
+    <link href="http://variia.github.io/merging-pillars-in-saltstack/"/>
+    <updated>2014-08-16T23:26:41+02:00</updated>
+    <id>http://variia.github.io/merging-pillars-in-saltstack</id>
+    <content type="html"><![CDATA[<p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
+time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
+
+<!--more-->
+
+
+<h2>Merging Pillars in SaltStack</h2>
+
+<p>I wrote a reasonably complex formula to manage our DNS (bind9) servers including zone files. As a common approach, I decided to use Pillar for configuration to make the formula
+generic and reusable.</p>
+
+<p>My formula required the following Pillar data (YAML):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">user</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">root</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">group</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">named</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">mode</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">640</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">custom</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">allow-query</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">127.0.0.1</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.0/24</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">allow-transfer</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">127.0.0.1</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.0/24</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">recursion</span><span class="p-Indicator">:</span> <span class="s">&quot;yes&quot;</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">zone-statistics</span><span class="p-Indicator">:</span> <span class="s">&quot;yes&quot;</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">transfer-format</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">many-answers</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">interface-interval</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">0</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">zones</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">domain.com</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">master</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">file</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">domain.com.hosts</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">also-notify</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.1</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.2</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">soa</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ttl</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">43200 ; 12 hours</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">email</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">hostmaster.domain.com.</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">refresh</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">10800 ; 3h refresh</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">retry</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">3600 ; 1h retry</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">expire</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">604800 ; 1w expire</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">minimum</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">10800 ; 3h minimum</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ns</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns1.domain.com.</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns6.otherdomain.net.</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns7.other.sub.domain.org.</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">sub.domain.org</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">slave</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">file</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">slaves/sub.domain.org.hosts</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">masters</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.1</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.2</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">sub.domain.net</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">forward</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">forward</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">only</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">forwarders</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">172.16.1.1</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To reuse my formula, I needed slightly different pillar for each DNS server but I wanted to reuse existing details to avoid duplication and pollution hence I ended up splitting
+the pillar into few files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/srv/salt/pillar/base/bind/named.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-master.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-slave.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-other.sls
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This allows the use or import of the <code>named.sls</code> (core config) for every server and depending on &ldquo;role&rdquo; even additional zones as required:</p>
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/named.sls:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">custom</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/zones-master.sls:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">zones</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">domain.com</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First, I tried adding <code>init.sls</code> with the "include" statement:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">include</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.named</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- if grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;master&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-master</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-other</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- endif %</span><span class="p-Indicator">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This did not work as expected, actually it overrides either the first subkey of the <code>named.sls</code> (custom) or the zone file (zone) depending on which gets read first during compile.</p>
+
+<p>I could have used the <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">include statement with the nesting </a>but it only works if I restructure
+the zone files and remove nesting from the bind key as well as include one zone.</p>
+
+<p>One option was to move this logic into the <code>top.sls</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">base</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="s">&#39;roles:dns&#39;</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">match</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">grain</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.named</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-master</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This worked perfectly, my pillars were merged exactly the I way I wanted. However, I did not want to move a messy if-else logic there to target master/slave servers differently.
+Adding the if-else logic to the zone files looked not so ideal, changing the grain structure for better targeting seemed also just &ldquo;too much&rdquo; for what I needed to accomplish.</p>
+
+<h4>Template Engine to the Rescue</h4>
+
+<p>My solution was hiding <a href="http://salt.readthedocs.org/en/latest/ref/renderers/all/salt.renderers.jinja.html" target="_blank">here</a>, I just had to compose the recipe
+myself. This method can be used in state files as well giving you the much needed power of code reuse.</p>
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/init.sls</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/named.sls&#39; as named with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-master.sls&#39; as masters with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-slave.sls&#39; as slaves with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-other.sls&#39; as others with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- if grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;master&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.update(masters.bind) %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- elif grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;slave&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.update(slaves.bind) %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- endif %</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.zones.update(others.bind.zones) %</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{{</span> <span class="nv">named</span> <span class="p-Indicator">}}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This imports all YAML files, compiles them as dictionaries and basically makes them available as objects by the given name. Then we just use the power of Jijna2 and carry out
+a dictionary update on specific objects from a specific nested key. To me it is readable, centralised and keeps the control inside the bind pillar, yet giving the power of flexibility.</p>
+
+<p>Minion targeting is now easy, keeping the <code>top.sls</code> clean and readable as possible:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">base</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="s">&#39;roles:dns&#39;</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">match</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">grain</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[WD MyCloud 2T NAS Review]]></title>
+    <link href="http://variia.github.io/wd-mycloud-2t-nas-review/"/>
+    <updated>2014-08-04T00:38:52+02:00</updated>
+    <id>http://variia.github.io/wd-mycloud-2t-nas-review</id>
+    <content type="html"><![CDATA[<p>I purchased a <a href="http://www.seagate.com/external-hard-drives/home-entertainment/media-sharing-devices/seagate-central" target="_blank">Seagate Central</a> 2T NAS 5 months
+ago, for a low cost home media center solution. It worked reasonably well considering the low ~US130 cost although, I had ongoing issues with firmware updates, occasional drive
+performance, etc. Unfortunately, it failed last week and while I was looking for alternatives, I learnt that I was not the only one having problems with that device so I simply
+lost trust in Seagate forever.</p>
+
+<p>I returned the drive, and the store offered me the <a href="http://www.wdc.com/mycloud/" target="_blank">WD MyCloud</a> 2T as a replacement alternative without extra cost what
+I happily accepted.</p>
+
+<!--more-->
+
+
+<h2>WD MyCloud 2T NAS Review</h2>
+
+<p>This is my personal opinion and experience compared to Seagate Central, not necessarily an official &ldquo;review&rdquo; of the hardware and its provided features.</p>
+
+<h4>Design</h4>
+
+<p>The enclosure is very solid, fairly compact and feels good. I find the upright design a bit impractical as well as unstable compared to the Seagate Central and I have to
+admit, I am not a big fan of the white housing and the blue LED in front but it&rsquo;s just personal preference. Comparing to Seagate Central, the device feels actually a lot
+cooler, it&rsquo;s more like hand warm rather than hot.</p>
+
+<h4>Features:</h4>
+
+<ul>
+<li>1 x Gbit interface</li>
+<li>1 x USB 3.0 port</li>
+<li>Dual Core processor</li>
+<li>DLNA 1.5 and UPnP Certified</li>
+<li>iTunes support</li>
+<li>TimeMachine support</li>
+<li>Mobile apps</li>
+<li>Remote access</li>
+</ul>
+
+
+<h2>The GOOD:</h2>
+
+<h4>Software:</h4>
+
+<p>The WebUI is very nice, clean and both easy to read and drive. The front page is well organised, dashboard alike but not &ldquo;too busy&rdquo; and easy to understand even for an average
+user but still giving you the option for detailed information, should you need it.</p>
+
+<p><img src="http://variia.github.io/images/2014-08/5347607A-0F91-4454-84CC-85F0DDD1F34C.jpg" /></p>
+
+<h4>Shares:</h4>
+
+<p><img src="http://variia.github.io/images/2014-08/1781162B-5656-424A-A26C-3A9B6CCE5285.jpg" /></p>
+
+<p>Shares can have individual access settings or set public (accessible without password) as well as set to be excluded from media serving. (does NOT include exclusion from media
+scan unfortunately)</p>
+
+<h4>Notifications:</h4>
+
+<p><img src="http://variia.github.io/images/2014-08/C6ABB8A2-A36D-4CE0-A4ED-93A93A7549F3.jpg" /></p>
+
+<p>You can set up email notifications and their importance. It&rsquo;s not so much of a monitoring but certainly helps to keep you up to date about the events occurring on the drive
+including predictive failure, reboots, etc.</p>
+
+<h4>Settings:</h4>
+
+<p><img src="http://variia.github.io/images/2014-08/23FBE529-56A2-45DB-ACF7-58AEF7DB125F.jpg" /></p>
+
+<p>Not so much of a feature, but it was great to see (after Seagate Central) that I have the ability to backup my configuration. Unfortunately, it only backs up the basics like
+network settings but it does not save some of the personal preferences such as &ldquo;Cloud Access&rdquo; settings, etc.</p>
+
+<h4>Network:</h4>
+
+<p><img src="http://variia.github.io/images/2014-08/0DEE40B5-9495-4540-B77E-AAA6D3B21887.jpg" /></p>
+
+<p>One of the biggest surprise (positive) for me was the fact that this device allows SSH access as well as FTP access. Furthermore, the access is root which may not be good for
+some but advanced users can really leverage this functionality especially when disaster strikes.</p>
+
+<h4>Safepoints:</h4>
+
+<p><img src="http://variia.github.io/images/2014-08/9BA06E47-3305-42D5-9581-434A0FCD6B6F.jpg" /></p>
+
+<p>Basically, you can set up another device and create a snapshot or mirror of your data at any given point of time. Considering the sizes available, I am not sure how feasible
+this is or how long it takes to copy 2T-4T over the cable even on Gbit network.</p>
+
+<p>Having the ability to clone one drive to another is not a bad idea and if you are looking for safety and value, it is cheaper to get 2 of these than one
+<a href="http://www.wdc.com/mycloudex2/">MyCloud EX</a> with 2 disks. Although that would give you encryption support as well as continuos operation even when one of the drive fails
+(assuming RAID1 setup).</p>
+
+<h4>DLNA 1.5 and Twonky:</h4>
+
+<p>Both my Samsung BluRay player and TV can stream seamlessly from the device. Just finished updating the firmware and was delighted to see a fairly recent Twonky release 7.2.8
+(this time of writing) included in the image.</p>
+
+<h4>Under the hood:</h4>
+
+<p>It&rsquo;s running Debian Linux 7, data volumes feature EXT4 filesystem on dual core ARM platform.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>Linux WDMyCloud 3.2.26 <span class="c">#1 SMP Tue Jun 17 15:53:22 PDT 2014 wd-2.2-rel armv7l</span>
+</span><span class='line'>
+</span><span class='line'>The programs included with the Debian GNU/Linux system are free software<span class="p">;</span>
+</span><span class='line'>the exact distribution terms <span class="k">for</span> each program are described in the
+</span><span class='line'>individual files in /usr/share/doc/*/copyright.
+</span><span class='line'>
+</span><span class='line'>Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+</span><span class='line'>permitted by applicable law.
+</span><span class='line'>
+</span><span class='line'>WDMyCloud:~# cat /proc/cpuinfo
+</span><span class='line'>Processor       : ARMv7 Processor rev <span class="m">1</span> <span class="o">(</span>v7l<span class="o">)</span>
+</span><span class='line'>processor       : 0
+</span><span class='line'>BogoMIPS        : 1292.69
+</span><span class='line'>
+</span><span class='line'>processor       : 1
+</span><span class='line'>BogoMIPS        : 1292.69
+</span><span class='line'>
+</span><span class='line'>Features        : swp half thumb fastmult vfp edsp neon vfpv3 tls
+</span><span class='line'>CPU implementer : 0x41
+</span><span class='line'>CPU architecture: 7
+</span><span class='line'>CPU variant     : 0x2
+</span><span class='line'>CPU part        : 0xc09
+</span><span class='line'>CPU revision    : 1
+</span><span class='line'>
+</span><span class='line'>Hardware        : Comcerto <span class="m">2000</span> EVM
+</span><span class='line'>Revision        : 0001
+</span><span class='line'>Serial          : 0000000000000000
+</span><span class='line'>
+</span><span class='line'>WDMyCloud:~# free
+</span><span class='line'>             total       used       free     shared    buffers     cached
+</span><span class='line'>Mem:        <span class="m">232448</span>     <span class="m">170816</span>      <span class="m">61632</span>          <span class="m">0</span>       <span class="m">7680</span>      38784
+</span><span class='line'>-/+ buffers/cache:     <span class="m">124352</span>     108096
+</span><span class='line'>Swap:       <span class="m">500672</span>      <span class="m">94208</span>     406464
+</span><span class='line'>
+</span><span class='line'>WDMyCloud:~# mount
+</span><span class='line'>/dev/root on / <span class="nb">type </span>ext3 <span class="o">(</span>rw,relatime,errors<span class="o">=</span><span class="k">continue</span>,barrier<span class="o">=</span>1,data<span class="o">=</span>ordered<span class="o">)</span>
+</span><span class='line'>tmpfs on /run <span class="nb">type </span>tmpfs <span class="o">(</span>rw,nosuid,noexec,relatime,size<span class="o">=</span>23296k,mode<span class="o">=</span>755<span class="o">)</span>
+</span><span class='line'>tmpfs on /run/lock <span class="nb">type </span>tmpfs <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,size<span class="o">=</span>40960k<span class="o">)</span>
+</span><span class='line'>proc on /proc <span class="nb">type </span>proc <span class="o">(</span>rw,nosuid,nodev,noexec,relatime<span class="o">)</span>
+</span><span class='line'>sysfs on /sys <span class="nb">type </span>sysfs <span class="o">(</span>rw,nosuid,nodev,noexec,relatime<span class="o">)</span>
+</span><span class='line'>tmpfs on /dev <span class="nb">type </span>tmpfs <span class="o">(</span>rw,relatime,size<span class="o">=</span>10240k,mode<span class="o">=</span>755<span class="o">)</span>
+</span><span class='line'>tmpfs on /run/shm <span class="nb">type </span>tmpfs <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,size<span class="o">=</span>5120k<span class="o">)</span>
+</span><span class='line'>devpts on /dev/pts <span class="nb">type </span>devpts <span class="o">(</span>rw,nosuid,noexec,relatime,gid<span class="o">=</span>5,mode<span class="o">=</span>620<span class="o">)</span>
+</span><span class='line'>fusectl on /sys/fs/fuse/connections <span class="nb">type </span>fusectl <span class="o">(</span>rw,relatime<span class="o">)</span>
+</span><span class='line'>tmpfs on /tmp <span class="nb">type </span>tmpfs <span class="o">(</span>rw,relatime,size<span class="o">=</span>102400k<span class="o">)</span>
+</span><span class='line'>/dev/root on /var/log.hdd <span class="nb">type </span>ext3 <span class="o">(</span>rw,relatime,errors<span class="o">=</span><span class="k">continue</span>,barrier<span class="o">=</span>1,data<span class="o">=</span>ordered<span class="o">)</span>
+</span><span class='line'>ramlog-tmpfs on /var/log <span class="nb">type </span>tmpfs <span class="o">(</span>rw,relatime,size<span class="o">=</span>20480k<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /DataVolume <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /CacheVolume <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /nfs/TimeMachineBackup <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /nfs/Public <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /nfs/SmartWare <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>/dev/sda4 on /nfs/vari <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,nodiratime,user_xattr,barrier<span class="o">=</span>0,data<span class="o">=</span>writeback<span class="o">)</span>
+</span><span class='line'>nfsd on /proc/fs/nfsd <span class="nb">type </span>nfsd <span class="o">(</span>rw,relatime<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>The BAD:</h2>
+
+<h4>Remote Access:</h4>
+
+<p>I never liked this idea, never meant to use it but you can access your content over the internet after registering your user on <a href="https://www.wd2go.com/" target="_blank">wdmycloud.com</a>.
+I was wondering about why it is and how my content is made available, whether it&rsquo;s encrypted, etc. After logging in via SSH, I discovered a process running on the device:</p>
+
+<p><code>root 1585 2.0 1.5 6464 3712 ? SN 07:48 0:00 openvpn /usr/local/orion/openvpnclient/client.ovpn</code></p>
+
+<p>When you disable &ldquo;Cloud Access&rdquo; under &ldquo;Settings -> General&rdquo;, this process disappears so generally, I was happy to see that personal content is served encrypted over the Internet.
+However, I see some serious privacy issues around using OpenVPN for this feature.</p>
+
+<p>How it is configured:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>WDMyCloud:~# grep . /usr/local/orion/openvpnclient/client.ovpn <span class="p">|</span> grep -vE <span class="s1">&#39;;|#&#39;</span>
+</span><span class='line'>client
+</span><span class='line'>dev tun
+</span><span class='line'>proto udp
+</span><span class='line'>remote orionrelaya37.wd2go.com 14187
+</span><span class='line'>remote orionrelaya42.wd2go.com 14418
+</span><span class='line'>remote orionrelaya13.wd2go.com 14508
+</span><span class='line'>remote orionrelaya52.wd2go.com 14603
+</span><span class='line'>remote orionrelaya1.wd2go.com 14299
+</span><span class='line'>remote orionrelaya67.wd2go.com 14789
+</span><span class='line'>remote orionrelaya16.wd2go.com 14849
+</span><span class='line'>remote orionrelaya15.wd2go.com 14264
+</span><span class='line'>remote orionrelaya56.wd2go.com 14104
+</span><span class='line'>remote orionrelaya24.wd2go.com 14441
+</span><span class='line'>remote orionrelaya38.wd2go.com 14711
+</span><span class='line'>remote orionrelaya4.wd2go.com 14740
+</span><span class='line'>remote orionrelaya63.wd2go.com 14775
+</span><span class='line'>remote orionrelaya74.wd2go.com 14935
+</span><span class='line'>remote orionrelaya96.wd2go.com 14097
+</span><span class='line'>remote orionrelaya97.wd2go.com 14807
+</span><span class='line'>remote orionrelaya70.wd2go.com 14592
+</span><span class='line'>remote orionrelaya65.wd2go.com 14777
+</span><span class='line'>remote orionrelaya26.wd2go.com 14076
+</span><span class='line'>remote orionrelaya79.wd2go.com 14258
+</span><span class='line'>remote orionrelaya25.wd2go.com 14080
+</span><span class='line'>remote orionrelaya62.wd2go.com 14285
+</span><span class='line'>remote orionrelaya6.wd2go.com 14198
+</span><span class='line'>remote orionrelaya17.wd2go.com 14450
+</span><span class='line'>remote orionrelaya18.wd2go.com 14703
+</span><span class='line'>remote orionrelaya75.wd2go.com 14405
+</span><span class='line'>remote orionrelaya51.wd2go.com 14442
+</span><span class='line'>remote orionrelaya28.wd2go.com 14474
+</span><span class='line'>remote orionrelaya88.wd2go.com 14041
+</span><span class='line'>remote orionrelaya21.wd2go.com 14080
+</span><span class='line'>remote orionrelaya35.wd2go.com 14174
+</span><span class='line'>remote orionrelaya66.wd2go.com 14824
+</span><span class='line'>remote orionrelaya49.wd2go.com 14745
+</span><span class='line'>remote orionrelaya73.wd2go.com 14091
+</span><span class='line'>remote orionrelaya53.wd2go.com 14688
+</span><span class='line'>remote orionrelaya61.wd2go.com 14884
+</span><span class='line'>remote orionrelaya47.wd2go.com 14858
+</span><span class='line'>remote orionrelaya32.wd2go.com 14785
+</span><span class='line'>remote orionrelaya76.wd2go.com 14217
+</span><span class='line'>remote orionrelaya41.wd2go.com 14183
+</span><span class='line'>remote orionrelaya72.wd2go.com 14173
+</span><span class='line'>remote orionrelaya78.wd2go.com 14709
+</span><span class='line'>remote orionrelaya7.wd2go.com 14140
+</span><span class='line'>remote orionrelaya98.wd2go.com 14744
+</span><span class='line'>remote orionrelaya22.wd2go.com 14257
+</span><span class='line'>remote orionrelaya64.wd2go.com 14021
+</span><span class='line'>remote orionrelaya69.wd2go.com 14003
+</span><span class='line'>remote orionrelaya48.wd2go.com 14064
+</span><span class='line'>remote orionrelaya71.wd2go.com 14951
+</span><span class='line'>remote orionrelaya94.wd2go.com 14567
+</span><span class='line'>tls-exit
+</span><span class='line'>explicit-exit-notify 3
+</span><span class='line'>script-security 2
+</span><span class='line'>up <span class="s2">&quot;/bin/rm -f /var/log/messages &amp;&amp;&quot;</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;Initialization Sequence Completed&quot;</span>
+</span><span class='line'>remote-random
+</span><span class='line'>resolv-retry infinite
+</span><span class='line'>nobind
+</span><span class='line'>persist-key
+</span><span class='line'>persist-tun
+</span><span class='line'>ca /usr/local/orion/openvpnclient/ca.crt
+</span><span class='line'>ns-cert-type server
+</span><span class='line'>verb 3
+</span><span class='line'>sndbuf 262144
+</span><span class='line'>--auth-user-pass /usr/local/orion/openvpnclient/auth.txt
+</span><span class='line'>reneg-sec 0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In nutshell: when you enable &ldquo;Cloud Access&rdquo;, you start a VPN client which &ldquo;connects&rdquo; to one of those &ldquo;orion&rdquo; WD endpoints you see configured as &ldquo;remote&rdquo; and build a point-to-point
+encrypted tunnel with it. This brings up a new virtual &ldquo;tun&rdquo; interface on your device with a specific class A private IP address, in my case:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> tun0 Link encap:UNSPEC HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+</span><span class='line'> inet addr:10.8.65.85 P-t-P:10.8.0.1 Mask:255.255.255.255
+</span><span class='line'> UP POINTOPOINT RUNNING NOARP MULTICAST MTU:1500 Metric:1
+</span><span class='line'> RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+</span><span class='line'> TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+</span><span class='line'> collisions:0 txqueuelen:100
+</span><span class='line'> RX bytes:0 <span class="o">(</span>0.0 B<span class="o">)</span> TX bytes:0 <span class="o">(</span>0.0 B<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This basically exposes your ENTIRE device to the &ldquo;other&rdquo; end you established the VPN tunnel with. The system is a cut-down version of Linux, it does not have firewall filtering
+or other security software built into it. Considering that FTP and SSH running on your device, anybody from the other end of the tunnel has the ability to log into your device
+and do whatever they want, including browsing your content.</p>
+
+<p>While I understand that it is a cost effective way of protecting your own content from 3rd parties, it does not protect you from the vendor itself so if you want to get access
+to your content while away, you will have to trust WD some ways.</p>
+
+<h4>AFP performance:</h4>
+
+<p>Bad news for OSX users, even listing a decent directory with few hundred files takes a long time. I could not be bothered too much about it,
+<a href="http://support.apple.com/kb/HT5884" target="_blank">OSX Mavericks now defaults to SMB</a> so Apple clearly signaled that it&rsquo;s moving away from its in-house developed protocol.</p>
+
+<p>Using the device over SMB (cifs) is fine, although I have not upgraded to OSX Mavericks yet so my experience is based on OSX Mountain Lion 10.8.5.</p>
+
+<h4>Thumbnails and the mysterious .wdmc directories:</h4>
+
+<p>If you log into the device via SSH or browse it with AFP, you will see mysterious <code>.wdmc</code> folders all over the place with lots of tiny image files in them. They are thumbnails
+of your media files so every folder that has media (image, video) in it will have one of these.</p>
+
+<p>SMB (samba) hides these so you won&rsquo;t see these normally but the issue with this service is that they are created regardless you want them or not. I am an amateur photographer,
+have thousands of images and these are not only take space from the device, but also expensive to create and manage. When you upload new content such as image, the device will
+display &ldquo;Content Scan&rdquo; &ldquo;Building&rdquo;, that means it&rsquo;s scanning and polluting your drive with these and depending on the volume, it can take a long long time and your drive performance
+will be degraded.</p>
+
+<p>I was under the impression, that if I turn media serving off for my &ldquo;photo share" it would be ignored. I actually like these thumbnails for my video share&rdquo; what I browse over
+DLNA but I don&rsquo;t want it for everything.</p>
+
+<p>So until WD kindly gives us the WebUI option to turn this off, you can do this (advanced users only):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>/etc/init.d/wdmcserverd stop
+</span><span class='line'><span class="nv">$ </span>/etc/init.d/wdphotodbmergerd stop
+</span><span class='line'><span class="nv">$ </span>update-rc.d wdphotodbmergerd disable
+</span><span class='line'><span class="nv">$ </span>update-rc.d wdmcserverd disable
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That will just disable the service, it will not remove the directories and this most likely to be required again after firmware updates.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Load Balancing and Sticky Sessions by URL Parameter]]></title>
+    <link href="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/"/>
+    <updated>2014-07-29T18:45:02+02:00</updated>
+    <id>http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter</id>
+    <content type="html"><![CDATA[<p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
+that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
+
+<p>This task was relatively easy with <a href="http://nginx.org" target="_blank">NGINX</a>, our preferred HTTP server however lately, I had to come up with a solution for
+<a href="http://www.apache.org" target="_blank">apache</a> 2.2 which was not as straight forward.</p>
+
+<!--more-->
+
+
+<h2>Load Balancing and Sticky Sessions by URL Parameter</h2>
+
+<p>apache maintains one of the best online documentation for most of its versions so finding a solution to my problem was not hard at all. However,
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html#example" target="_blank">most solutions are based on cookies</a> what I could not use. The issue with
+cookies is that I have limited control over them, there is no guarantee that the user has cookies enabled, or it will be saved not to mention that cookies can become corrupted too.</p>
+
+<p>The other issue with cookie based load balancing is that once you have one set, you always ended up on the same backend server even when you make your <em>first request</em>.
+Our requirement was that for initial calls, we want randomly allocated backend then for subsequent calls we want the user to be handled by the same server what handled the
+first call.</p>
+
+<p>Sticky sessions with URL parameter is supported by apache&rsquo;s mod_proxy:</p>
+
+<p><em>The second way of implementing stickyness is URL encoding. The web server searches for a query parameter in the URL of the request. The name of the parameter is specified
+again using stickysession. The value of the parameter is used to lookup a member worker with route equal to that value.</em></p>
+
+<p>For some reason, I had mixed results, over all it seemed unreliable hence I had to come up with my own solution based on mod_rewrite:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='apache'><span class='line'><span class="nb">RewriteLog</span> logs/virtualhost_rewrite.log
+</span><span class='line'><span class="nb">RewriteLogLevel</span> <span class="m">2</span>
+</span><span class='line'><span class="nb">RewriteEngine</span> <span class="k">On</span>
+</span><span class='line'><span class="nb">RewriteCond</span> %{QUERY_STRING} (myparam=myvalue1)
+</span><span class='line'><span class="nb">RewriteRule</span> (.*) http://lb-node1.domain.com:8080%{REQUEST_URI} [P,L]
+</span><span class='line'><span class="nb">RewriteCond</span> %{QUERY_STRING} (myparam=myvalue2)
+</span><span class='line'><span class="nb">RewriteRule</span> (.*) http://lb-node2.domain.com:8080%{REQUEST_URI} [P,L]
+</span><span class='line'>
+</span><span class='line'><span class="nb">ProxyErrorOverride</span> <span class="k">On</span>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;Proxy</span> <span class="s">balancer://loadbalancer</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nb">BalancerMember</span> http://lb-node1.domain.com:8080
+</span><span class='line'>    <span class="nb">BalancerMember</span> http://lb-node2.domain.com:8080
+</span><span class='line'><span class="nt">&lt;/Proxy&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">ProxyPass</span> / balancer://loadbalancer/
+</span><span class='line'><span class="nb">ProxyPassReverse</span> / http://lb-node1.domain.com:8080/
+</span><span class='line'><span class="nb">ProxyPassReverse</span> / http://lb-node2.domain.com:8080/
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Important to point out, that mod_rewrite rules are evaluated first before any other settings or rules and this behaviour is critical for this functionality.</p>
+
+<p>We basically check the incoming URL and if we a have match on our URL parameter, we pass the request handling to mod_proxy without evaluating any other rules. Our URL parameters
+are always unique and set by the backend servers so we need as much rewrite rules as backed servers we have.</p>
+
+<p>The <code>&lt;Proxy&gt;</code> directive sets up a standard load balancer, this ensures that initial request can be load balanced evenly between all member servers. The <code>ProxyPassReverse</code>
+directives ensure that we correctly pass redirects back to the clients&hellip;</p>
+
+<p>The only issue with this setup is that, if one of the application servers become unreachable, the clients will receive 502 (bad gateway) if they have URL parameter set.</p>
+
+<p>NGINX is much easier to set up, and since it monitors the backend servers, it can proxy traffic to other available backend servers regardless of the URL parameter being set or not.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='nginx'><span class='line'><span class="k">upstream</span> <span class="s">lb-pool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">upstream</span> <span class="s">node1</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span> <span class="s">backup</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">upstream</span> <span class="s">node2</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span> <span class="s">backup</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">server</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kn">proxy_cache</span> <span class="no">off</span><span class="p">;</span>
+</span><span class='line'>        <span class="kn">proxy_pass_header</span> <span class="no">off</span><span class="p">;</span>
+</span><span class='line'>        <span class="kn">proxy_set_header</span> <span class="s">Host</span> <span class="nv">$http_host</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">if</span> <span class="s">(</span><span class="nv">$arg_myparam</span> <span class="p">=</span> <span class="s">&quot;myvalue1&quot;)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kn">proxy_pass</span> <span class="s">http://node1</span><span class="p">;</span>
+</span><span class='line'>            <span class="kn">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">if</span> <span class="s">(</span><span class="nv">$arg_myparam</span> <span class="p">=</span> <span class="s">&quot;myvalue2&quot;)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kn">proxy_pass</span> <span class="s">http://node2</span><span class="p">;</span>
+</span><span class='line'>            <span class="kn">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">proxy_pass</span> <span class="s">http://lb-pool</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Dashlane vs 1Password]]></title>
+    <link href="http://variia.github.io/dashlane-vs-1password/"/>
+    <updated>2014-07-17T00:33:29+02:00</updated>
+    <id>http://variia.github.io/dashlane-vs-1password</id>
+    <content type="html"><![CDATA[<p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
+for years and happy with it except a couple of things:</p>
+
+<ul>
+<li>written in .NET so cross platform integration has its challenges</li>
+<li>browser integration</li>
+</ul>
+
+
+<p>Although the browser integration is reasonably good now on Windows, it&rsquo;s not as <em>refined</em> as its commercial competitors such as <a href="https://www.dashlane.com" target="_blank">Dashlane </a> or
+<a href="https://agilebits.com/onepassword" target="_blank">1Password</a>. So I decided to investigate these utilities to see if they can convince me to switch.</p>
+
+<!--more-->
+
+
+<h2>Update - July 28th, 2014:</h2>
+
+<p>I have to admit, that most of my concerns around 1Password were related to the earlier Windows version. Since my evaluation,
+<a href="http://blog.agilebits.com/2014/06/17/1password-4-for-windows-is-here/" target="_blank">1Password 4 was made available for Windows</a> and looks, feels, behaves exactly
+like on OSX.</p>
+
+<p>I am very happy to say that, I made the switch and I am a satisfied 1Password customer ever since. In the end, I decided not to look at cost when it comes to security,
+and <a href="http://blog.agilebits.com/2014/07/16/1password-is-a-very-safe-basket/" target="_blank">it seems that I made the right decision.</a></p>
+
+<h2>Dashlane vs 1Password</h2>
+
+<p>I didn&rsquo;t want to go into detail and compare the core or advanced features of these apps, you can find elsewhere. My goal was to find something more convenient and easier to
+use than KeePass but keeping the balance between security, functionality and convenience.</p>
+
+<p>It was also important to me how <em>trusted</em> the vendor is, what kind of reputation they may have and how easy it is to get my data, should they disappear from the market.</p>
+
+<p>This is purely my gut feeling / opinion and based on my quick and dirty trial based on versions available at this time of writing. I looked at how they compare to my current
+software KeePass regarding functionality, security, design, look / feel and above all, how easy the transition would be.</p>
+
+<h4>Dashlane pros:</h4>
+
+<ul>
+<li>offline or online: you only have to be online while register an account, it does not affect working with an already created local database if you choose not to pay or
+turn off cloud sync</li>
+<li>secure: 2 factor authentication supported</li>
+<li>clean interface: identical look / feel on both Windows and OSX</li>
+<li>security and authorisation: even if you just want to create a brand new local valet (without cloud sync) on a &ldquo;new&rdquo; device, it needs to be &ldquo;approved&rdquo; with an online
+code sent to the registered email. Dashlane essentially tracks the devices associated with an account regardless you sync to the cloud or not.</li>
+<li>browser integration: seamless plugin install and integration during setup</li>
+<li>auto login: no need to click (most websites) on submit button ever again. If you happen to have multiple accounts for a single site you will have an &ldquo;drop down&rdquo; list to
+select from.</li>
+<li>export: csv and its own encrypted .dash format</li>
+<li>cost: subscription based, annual fee then you can sync your valet to unlimited number of devices including mobile</li>
+<li>support: good although over email a bit slow</li>
+<li>security dashboard: gives you warnings about reused passwords, compromised accounts, etc.</li>
+</ul>
+
+
+<h4>Dashlane cons:</h4>
+
+<ul>
+<li>icon view: I hated it, I don&rsquo;t need a thumbnail to identify an account, no detailed &ldquo;list like&rdquo; view. To see any details about any accounts, I had to click on them individually</li>
+<li>no copy item: I had to fill new entry for few similar items even if 2 fields changed only</li>
+<li>the interface: designed for web accounts only, not so useful for example PIN numbers where there is no username, it simply won&rsquo;t save without username field filled</li>
+<li>import mismatch: The account name and access URLs are really important for autofill, although I had some websites in the valet after import, on visit I got the popup
+offering account creation which indicated failed match against my valet stored entry</li>
+<li>idle lock only: no option to lock on screen lock, etc. although it&rsquo;s not so much of a concern for an average user</li>
+<li>import: KeePass import is Windows only, although works sort of well</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>main window: over-engineered, password &ldquo;categories&rdquo; does not help to organise accounts. Over 100+ accounts this view becomes overwhelming and confusing</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+<li>security: I didn&rsquo;t like the idea of having the ability to log into their website and browse my password valet (paid only)</li>
+<li>logo: I just cannot personally associate &ldquo;antiloop&rdquo; with password management</li>
+</ul>
+
+
+<h4>1Password pros:</h4>
+
+<ul>
+<li>offline or online: no built in cloud sync option, Google Drive, iCloud, Dropbox, WiFi or just local valet, it&rsquo;s your choice</li>
+<li>design: love the application on OSX, similar to KeePass, easy to see details, password strength, etc. in a &ldquo;detailed like&rdquo; list view</li>
+<li>main window: collapsible folder options, excellent organisation and tags, really nice looking interface</li>
+<li>import: KeePass import allows &ldquo;field&rdquo; selection from the CSV export to mach 1Password fields which comes handy for complex entries</li>
+<li>security: <a href="http://blog.agilebits.com/2013/03/06/you-have-secrets-we-dont-why-our-data-format-is-public/" target="_blank">openly published security design</a></li>
+<li>trusted: stable software from vendor with good reputation</li>
+<li>support: great support and community forums</li>
+<li>export: csv, text or its own .pif format</li>
+<li>shared vault: could be very handy between family members</li>
+<li>security audit: reports weak passwords, old or duplicated entries, etc.</li>
+</ul>
+
+
+<h4>1Password cons:</h4>
+
+<ul>
+<li>overpriced: no subscription and copies need to be purchased for multiple devices, mobile is also extra</li>
+<li>Windows version: may be identical functionality wise but looks / feels totally different to OSX. Ugly, clumsy and suggest very early development.</li>
+<li>browser plugins: install is not part of the setup, needs to be done manually for each browser from various sources and it&rsquo;s convoluted / confusing especially on Windows</li>
+<li>no auto login: no auto field population either, even a simple browser does that. I don&rsquo;t know why I have to hit "CMD+\&ldquo; key combination to be able to populate fields and
+log in automatically.</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>no 2 factor authentication: and <a href="http://blog.agilebits.com/2011/09/23/two-factor-or-not-two-factor/" target="_blank">it&rsquo;s not even planned</a></li>
+<li>browser plugins based on &ldquo;websockets&rdquo; and it can break things or requires specific settings on some platforms , Windows especially</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+</ul>
+
+
+<h4>Verdict</h4>
+
+<p>No clear winner for me, decided to keep using KeePass until something better comes along. The big shock for me was the apache server authentication, neither of them could handle
+those popups so I was left with &ldquo;cut n' paste&rdquo; or &ldquo;save in the browser&rdquo;, which was a big deal as I have a lot of those.</p>
+
+<p>I liked Dashlane (2.4.1) but it needs refinement, something that 1Password (4.4.1) has on OSX but it is very pricey and I don&rsquo;t think it&rsquo;s justified compared to some of the missing
+features/ annoying bits. I also need at least Windows and OSX support, which is done well from Dashlane but 1Password is very much beta on Windows and I am not even sure, on
+what grounds they can charge money for it.</p>
+
+<p>I have not evaluated <a href="https://www.lastpass.com" target="_blank">Lastpass</a> yet, at this stage I simply
+<a href="http://arstechnica.com/security/2014/07/severe-password-manager-attacks-steal-digital-keys-and-data-en-masse/" target="_blank">do not trust that product</a> and their security practices.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Running Pylint in PyCharm]]></title>
+    <link href="http://variia.github.io/running-pylint-in-pycharm/"/>
+    <updated>2014-07-03T00:41:28+02:00</updated>
+    <id>http://variia.github.io/running-pylint-in-pycharm</id>
+    <content type="html"><![CDATA[<p>I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
+<a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports
+<a href="http://legacy.python.org/dev/peps/pep-0008/" target="_blank">PEP8 </a>auditing &ldquo;out of the box&rdquo;, but I found out lately, that it is a little &ldquo;loose&rdquo; on style
+compared to pylint. Running pylint in pycharm didn&rsquo;t seem to be supported in any ways so I became curious about how I could add this functionality to my favourite IDE.</p>
+
+<p>After some searching, I realised that there is not much out there about this topic. I could not accept it and went after the challenge&hellip;</p>
+
+<!--more-->
+
+
+<h2>Running Pylint in PyCharm</h2>
+
+<p>As it turned out, it is much simpler than I initially thought. First install pylint, it&rsquo;s very easy, there are various ways of doing it depending on operating system, your
+preference, etc. so the installation is out of the scope of this guide.</p>
+
+<h4>Create an external tool:</h4>
+
+<p><img src="http://variia.github.io/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
+
+<p>My pylint config is fairly simple, nearly stock standard so I simply added my customisation to the &ldquo;parameters&rdquo; line, but for more complex setups, I strongly recommend setting
+up <code>.pylintrc</code> in your HOME then adding your config file to the parameter line as an argument. This basically pipes your code through pylint and displays the results in the &ldquo;run&rdquo;
+console.</p>
+
+<h4>Configure output filter:</h4>
+
+<p><img src="http://variia.github.io/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
+
+<p>These will create an XML config that looks like this on OSX:</p>
+
+<figure class='code'><figcaption><span>$ less Library/Preferences/PyCharm4.0/tools/CodeCompliance.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;toolSet</span> <span class="na">name=</span><span class="s">&quot;CodeCompliance&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tool</span> <span class="na">name=</span><span class="s">&quot;Pylint&quot;</span> <span class="na">description=</span><span class="s">&quot;External module to integrate pylint compliance checks into PyCharm&quot;</span> <span class="na">showInMainMenu=</span><span class="s">&quot;true&quot;</span> <span class="na">showInEditor=</span><span class="s">&quot;true&quot;</span> <span class="na">showInProject=</span><span class="s">&quot;true&quot;</span> <span class="na">showInSearchPopup=</span><span class="s">&quot;true&quot;</span> <span class="na">disabled=</span><span class="s">&quot;false&quot;</span> <span class="na">useConsole=</span><span class="s">&quot;true&quot;</span> <span class="na">showConsoleOnStdOut=</span><span class="s">&quot;false&quot;</span> <span class="na">showConsoleOnStdErr=</span><span class="s">&quot;false&quot;</span> <span class="na">synchronizeAfterRun=</span><span class="s">&quot;true&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;exec&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;COMMAND&quot;</span> <span class="na">value=</span><span class="s">&quot;pylint&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;PARAMETERS&quot;</span> <span class="na">value=</span><span class="s">&quot;--disable=W0106,W0212 --max-line-length=120 --msg-template=&amp;quot;$FileDir$/{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}&amp;quot; $FilePath$&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;WORKING_DIRECTORY&quot;</span> <span class="na">value=</span><span class="s">&quot;$FileDir$&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/exec&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;filter&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;NAME&quot;</span> <span class="na">value=</span><span class="s">&quot;ErrorMessages&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;DESCRIPTION&quot;</span> <span class="na">value=</span><span class="s">&quot;Creates jump links to non-compliant lines&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;REGEXP&quot;</span> <span class="na">value=</span><span class="s">&quot;$FILE_PATH$\:$LINE$\:&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/filter&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tool&gt;</span>
+</span><span class='line'><span class="nt">&lt;/toolSet&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As the description says, this will essentially give you quick <em>jump links</em> to the parts of your code where the non-compliant code is.</p>
+
+<p><img src="http://variia.github.io/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
+
+<p>Clicking on any of the blue lines will simply navigate you to the line where the issue is, and adding <em>keymap</em> to this tool can improve your workflow too.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Solving Camel ActiveMQ Clients in TCP TIME_WAIT]]></title>
+    <link href="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/"/>
+    <updated>2014-06-04T23:25:27+02:00</updated>
+    <id>http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait</id>
+    <content type="html"><![CDATA[<p>We are an agile software development company and agile is great for &ldquo;moving target&rdquo;. We plan, work and implement changes in small batches and ongoing re-factoring is just
+the nature of what we do.</p>
+
+<p>We recently added some functionality as well as increased traffic for one of our Java products utilising <a href="http://camel.apache.org" target="_blank">Apache Camel</a>
+and <a href="http://activemq.apache.org" target="_blank">ActiveMQ</a>. The product has been in production for years now, functioning with very much zero defect rate. Not soon
+after deploying the new code, our monitoring system triggered alerts about unusually high TCP TIME_WAIT connection states on the server where the new code was running. We
+began the troubleshooting process and found they were all ActiveMQ connections to our broker. Our developers immediately confirmed that</p>
+
+<p>&ldquo;<em>there was no change on the ActiveMQ connection manager side.</em>&rdquo;</p>
+
+<p>Well, it turned out that it was exactly the problem.</p>
+
+<!--more-->
+
+
+<h2>Solving Camel ActiveMQ Clients in TCP TIME_WAIT</h2>
+
+<p>I started looking various aspects of our environment but was unable to pinpoint where the problem was coming from. So I shifted my focus onto our client implementation, despite
+the confirmation from the developers.</p>
+
+<p><img src="http://variia.github.io/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
+
+<p>Note: it&rsquo;s perfectly natural to have these especially on systems that deal with lots of short lived requests from client connections over unreliable public networks. In nutshell,
+the local TCP stack waits for twice the maximum segment lifetime (MSL) to pass (120 sec default) before it finishes CLOSING to be sure that the remote end-point received the
+acknowledgement (and was not queued on upstream routers). Normally it&rsquo;s harmless, although in large volume could cause memory overflow.</p>
+
+<p>We did have enough <a href="http://en.wikipedia.org/wiki/Ephemeral_port" target="_blank">ephemeral ports</a> to support 3.5K TIME_WAIT sockets, my issue was that it was an
+extra ~1K and coming from my local network.</p>
+
+<p>While looking at our code, I spotted something interesting in our client implementation, we used <a href="http://activemq.apache.org/maven/apidocs/org/apache/activemq/spring/ActiveMQConnectionFactory.html" target="_blank"><em>ActiveMQConnectionFactory</em></a>
+instead of <a href="http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html" target="_blank">PooledConnectionFactory</a>. Although our
+application was functioning, large volume of asynchronous messages created overhead around socket maintenance on server what we don&rsquo;t need. After replacing our code to use
+PooledConnectionFactory, we loaded the application into our test environment to confirm the affect.</p>
+
+<p>ActiveMQConnectionFactory (old):</p>
+
+<ul>
+<li>24 ESTABLISHED connections to the broker</li>
+<li>~150 TIME_WAIT sockets after the initial startup burst of ~1000</li>
+</ul>
+
+
+<p>PooledConnectionFactory (new):</p>
+
+<ul>
+<li>6 ESTABLISHED connections to the broker</li>
+<li>0 TIME_WAIT sockets</li>
+</ul>
+
+
+<p>We managed to reproduce this 100% in our test environment, and deploying the new code into production had not affected our throughput either.</p>
+
+<p><img src="http://variia.github.io/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
+
+<p>Camel, which uses Spring JMS underneath benefits from pooling aware JMS ConnectionFactory such as PooledConnectionFactory hence it is always recommended.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Script to Clone SaltStack Formulas From GitHub]]></title>
+    <link href="http://variia.github.io/script-clone-saltstack-formulas-github/"/>
+    <updated>2014-05-23T19:44:01+02:00</updated>
+    <id>http://variia.github.io/script-clone-saltstack-formulas-github</id>
+    <content type="html"><![CDATA[<p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
+formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
+and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may
+need in the near future so why not clone all of them and ensure I have a local copy of them for my development.</p>
+
+<p>The pages have been updated fairly regularly, more and more people contributing now to the project, which is great however it started to become tedious to find new formulas
+and I needed an automated solution to keep up to date with the changes.</p>
+
+<!--more-->
+
+
+<h4>Script to Clone SaltStack Formulas from GitHub</h4>
+
+<p>I could not find anything off-the-shelf, hence I had to come up with my own solution using python.</p>
+
+<figure class='code'><figcaption><span>salt_github_formulas.py</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'><span class="sd">    Script to find github hosted SaltStack formulas and make a up-to-date local copies of them.</span>
+</span><span class='line'><span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">urllib2</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">re</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">os</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">subprocess</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;Ivan Vari&quot;&quot;</span>
+</span><span class='line'><span class="n">__credits__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;Oliver Drake&quot;</span><span class="p">]</span>
+</span><span class='line'><span class="n">__license__</span> <span class="o">=</span> <span class="s">&quot;GPLv3&quot;</span>
+</span><span class='line'><span class="n">__version__</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class='line'><span class="n">__maintainer__</span> <span class="o">=</span> <span class="s">&quot;Ivan Vari&quot;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">URL</span> <span class="o">=</span> <span class="s">&quot;https://github.com/saltstack-formulas&quot;</span>
+</span><span class='line'><span class="n">PATTERN</span> <span class="o">=</span> <span class="s">&#39;a href=&quot;(/saltstack.*)&quot;\s&#39;</span>
+</span><span class='line'><span class="n">HOME</span> <span class="o">=</span> <span class="s">&#39;{0}/development/saltstack-formulas&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&#39;HOME&#39;</span><span class="p">])</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+</span><span class='line'>    <span class="sd">&quot;&quot;&quot;</span>
+</span><span class='line'><span class="sd">    Main function and control flow.</span>
+</span><span class='line'><span class="sd">    &quot;&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># print strings with color</span>
+</span><span class='line'>    <span class="c"># http://pythonhosted.org/ANSIColors-balises/ANSIColors.html</span>
+</span><span class='line'>    <span class="n">colorgrn</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\033</span><span class="s">[01;32m{0}</span><span class="se">\033</span><span class="s">[00m&quot;</span>
+</span><span class='line'>    <span class="n">colorwht</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\033</span><span class="s">[1;37m{0}</span><span class="se">\033</span><span class="s">[00m&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># margin for aligned printing</span>
+</span><span class='line'>    <span class="n">width</span> <span class="o">=</span> <span class="mi">50</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># default loop controls</span>
+</span><span class='line'>    <span class="n">lastpage</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="n">page</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c"># until we reach lastpage</span>
+</span><span class='line'>    <span class="k">while</span> <span class="n">lastpage</span> <span class="o">&gt;=</span> <span class="n">page</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">page_url</span> <span class="o">=</span> <span class="n">URL</span> <span class="o">+</span> <span class="s">&#39;?page={0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">connection</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span><span class="n">page_url</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">response</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c"># find all formula-references on the current page</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">PATTERN</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()):</span>
+</span><span class='line'>            <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;https://github.com&#39;</span> <span class="o">+</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c"># if 1st page, extract last page id and update loop controls</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">page</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;?page=&#39;</span> <span class="ow">in</span> <span class="n">url</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">ref</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&#39;page=\d*&#39;</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+</span><span class='line'>                <span class="n">lastpage</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c"># then ignore the page id completely</span>
+</span><span class='line'>            <span class="k">if</span> <span class="s">&#39;?page=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">url</span><span class="p">:</span>
+</span><span class='line'>                <span class="c"># extract the formula name from the URL</span>
+</span><span class='line'>                <span class="n">formula</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>                <span class="n">repocopy</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">HOME</span><span class="p">,</span> <span class="n">formula</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c"># default assumes cloning</span>
+</span><span class='line'>                <span class="n">cmd</span> <span class="o">=</span> <span class="s">&#39;git clone {0} {1}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">repocopy</span><span class="p">)</span>
+</span><span class='line'>                <span class="n">exec_dir</span> <span class="o">=</span> <span class="s">&#39;/&#39;</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c"># if local copy found, change exec_dir and method to pull</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">repocopy</span><span class="p">):</span>
+</span><span class='line'>                    <span class="n">cmd</span> <span class="o">=</span> <span class="s">&#39;git pull&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">repocopy</span><span class="p">)</span>
+</span><span class='line'>                    <span class="n">exec_dir</span> <span class="o">=</span> <span class="n">repocopy</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(),</span>
+</span><span class='line'>                                           <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+</span><span class='line'>                                           <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+</span><span class='line'>                                           <span class="n">cwd</span><span class="o">=</span><span class="n">exec_dir</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c"># default output definition</span>
+</span><span class='line'>                <span class="n">result</span> <span class="o">=</span> <span class="s">&#39;[OK]&#39;</span>
+</span><span class='line'>                <span class="n">flag</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c"># override output definition based on git output message</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="s">&#39;Cloning&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+</span><span class='line'>                        <span class="n">result</span> <span class="o">=</span> <span class="s">&#39;[NEW]&#39;</span>
+</span><span class='line'>                        <span class="n">flag</span> <span class="o">=</span> <span class="s">&#39;*&#39;</span>
+</span><span class='line'>                    <span class="k">elif</span> <span class="s">&#39;Updating&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+</span><span class='line'>                        <span class="n">result</span> <span class="o">=</span> <span class="s">&#39;[UP]&#39;</span>
+</span><span class='line'>                        <span class="n">flag</span> <span class="o">=</span> <span class="s">&#39;+&#39;</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="n">margin</span> <span class="o">=</span> <span class="n">width</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">flag</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">print</span> <span class="s">&#39;[{0}]: &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">formula</span><span class="p">)</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">margin</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;=&gt;&#39;</span> <span class="o">+</span> \
+</span><span class='line'>                      <span class="n">colorwht</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="o">+</span> <span class="n">colorgrn</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">page</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c"># boilerplate</span>
+</span><span class='line'><span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span class='line'>    <span class="n">main</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This essentially parses the HTML of the front page and works out the available page numbers then fetches each page individually, filters out all formula references and runs git clone/pull over them depending whether we have local copy of it or not.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Integrating Networks Over VPN With Amazon VPC]]></title>
+    <link href="http://variia.github.io/integrating-networks-vpn-amazon-vpc/"/>
+    <updated>2014-05-19T00:21:58+02:00</updated>
+    <id>http://variia.github.io/integrating-networks-vpn-amazon-vpc</id>
+    <content type="html"><![CDATA[<p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
+This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
+should your resource requirements increase and so forth.</p>
+
+<p>This guide is going to be technical, intended for experienced professionals where I will be discussing options and solutions to securely integrate your onsite
+(private) LANs with Amazon VPC. It is based on OpenVPN client running on an instance inside VPC, connecting to my remote branch firewall running pfSense 2.1.3
+and OpenVPN server. The point-to-point tunnel between the client / server is 2-way, both the client and the server expose their local networks and route traffic
+to the other side accordingly. But first, let&rsquo;s take a look at what other option we have.</p>
+
+<!--more-->
+
+
+<h2>Amazon VPC VPN</h2>
+
+<p>This is built into VPC and utilizes IPsec which operates on OSI model layer 3 and 4. This technology has been out there for long time, considered fairly secure
+and supported on many hardware appliances from most well known vendors. Since it operates on lower layer of the OSI model, it&rsquo;s not intended for end users such as
+desktop computers, mobile devices, it&rsquo;s more suitable for connecting networks aka site-to-site VPN.</p>
+
+<h4>Features and Benefits</h4>
+
+<ol>
+<li>Secure. In fact, it was not affected by the recently discovered <a href="http://heartbleed.com" target="_blank">Heartbleed</a> bug of OpenSSL as it&rsquo;s using
+ crypto built into the kernel.</li>
+<li>Supports dynamic route management with iBGP, suitable for corporate networks with lots of local LANs.</li>
+<li>Somewhat easy to implement, widely supported on many hardware platforms, appliances as well as open source software such as
+ <a href="https://www.openswan.org" target="_blank">Openswan</a> or <a href="https://www.strongswan.org" target="_blank">strongSwan</a>.</li>
+<li><a href="https://aws.amazon.com/vpc/pricing/" target="_blank">Cheap</a>. Currently it&rsquo;s approximately ~$1 / per day depending on region.</li>
+<li>It&rsquo;s really the easiest, simplest, out of box solution at this time of writing.</li>
+</ol>
+
+
+<p>There is a few good guides out there to get you started, however the easiest and most up-to-date is on
+<a href="https://docs.openvpn.net/how-to-tutorialsguides/administration/extending-vpn-connectivity-to-amazon-aws-vpc-using-aws-vpc-vpn-gateway-service" target="_blank">OpenVPN&rsquo;s website</a>.</p>
+
+<h2>VPN terminated on an EC2 Instance inside your VPC</h2>
+
+<p>While it does share some features with IPsec, there are a couple of special ones that apply to OpenVPN:</p>
+
+<ul>
+<li>Cost savings. Yes, $1 a day is cheap and I have a supported hardware at my branch endpoint, BUT I already have a requirement to run an instance 24/7 inside my VPC
+doing DNS, NTP, git, etc. Adding a VPN and routing functionality on top of those are not hard and just makes sense. I would rather spend that $1 / day on other great
+services such as S3 storage or CloudWatch.</li>
+<li>Internet availability inside VPC. While the IPsec VPN is superb, it does not provide you internet for your VPC resources, VPC meant to be private, no public traffic
+in / out. So if I have to have an instance doing SNAT for outgoing Internet inside the VPC, then why not terminate the VPN on the same instance?</li>
+</ul>
+
+
+<h4>Build your VPC</h4>
+
+<p><img src="http://variia.github.io/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
+
+<p>I will not going into too much detail here, just share the important bits I encountered during my setup. The Amazon guide is well written, please read it for full understanding
+of the <a href="http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Scenario2.html" target="_blank">concept</a>.</p>
+
+<ul>
+<li>Create a VPC with a preferably /16 mask. eg: <code>10.0.0.0/16</code> (Note: CIDR mask must be between /16 and /28)</li>
+<li>Create at least 2 subnets that overlap with your the VPC CIDR mask, preferably /24. eg: <code>10.0.0.0/24</code>, <code>10.0.1.0/24</code>. One will be your private LAN with outgoing only Internet,
+the other public with in and outgoing Internet.</li>
+<li>Create a VPC &ldquo;Internet Gateway&rdquo;, attach it to your VPC.</li>
+<li>Ignore &ldquo;Network ACL&rdquo; for now, defaults are fine.</li>
+</ul>
+
+
+<p>Pick a private IP address from your public /24 subnet you created in your VPC. eg: <code>10.0.0.8</code> This will be the internal address for your EC2 router. <em>While you cannot use
+static private IP addresses inside VPC at this time of writing, you can associate certain addresses to instances. They still use DHCP but always get the same address, most
+likely via MAC address mapping.</em></p>
+
+<ul>
+<li>Associate an &ldquo;Elastic IP Address&rdquo; aka public IP for your VPC if you have no free available. Use &ldquo;network interface&rdquo; association since we have no instance running yet,
+and use the private IP you picked above. This essentially creates a &ldquo;network interface&rdquo; object and adds your selected public / private IPs to it.</li>
+<li>Create a DHCP option set (optional) if you want to dish out your own DNS servers, domain names, etc. for your VPC instances, but it&rsquo;s not required for the VPN routing.</li>
+<li>Make sure the security group attached to your VPC has port 22 open for 0.0.0.0/0. This is important initially for being able to reach your newly created &ldquo;router&rdquo; instance
+via the public elastic IP until you sort out the internal routing, firewalling, VPN, etc.</li>
+<li>You will have a default &ldquo;route&rdquo; object attached to your VPC, and it will be set to &ldquo;Main&rdquo;. I recommend to leave that untouched which routes only it&rsquo;s own VPC traffic
+by default. It&rsquo;s important for security reasons because &ldquo;Main" always applies to a subnets that are not associated with any custom "route&rdquo; object.</li>
+</ul>
+
+
+<p>Then, create a custom &ldquo;route&rdquo; object, associate that with your &ldquo;public&rdquo; VPC subnet where the VPN instance resides. eg: <code>10.0.0.0/24</code>. and add your default route to it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0.0.0.0/0          igw-yourid
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This essentially gives you internet access for outgoing traffic.</p>
+
+<p>NOTE: networks available inside your VPN EC2 instance (aka networks on the far side of your OpenVPN tunnel) will not be available for any other other instance you launch
+into this &ldquo;public&rdquo; subnet of your VPC. If you need to reach any of those by their internal VPC IP, you will have to add them to the custom &ldquo;route&rdquo; object you associated
+with the &ldquo;public&rdquo; subnet as follows:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>192.168.0.0/24         eni-ID
+</span><span class='line'>10.100.100.0/24        eni-ID
+</span><span class='line'>10.100.200.0/24        eni-ID
+</span><span class='line'>10.100.300.0/24        eni-ID
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The ID is the &ldquo;network interface&rdquo; object you mapped your elastic IP to (attached to your VPN instance). The private class C address is my OpenVPN client network, the other
+3 are the LANs behind the pfSense VPN server. You also have to remember, that all instances MUST have elastic IP associated to them inside your &ldquo;public&rdquo; VPC subnet, they
+will not be able to use the VPN router instance!</p>
+
+<p>Create another custom &ldquo;route&rdquo; object, associate it with your &ldquo;private&rdquo; VPC subnet eg: <code>10.0.1.0/24</code> and add the following route to it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0.0.0.0/0          eni-ID
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This will add default route to all instances for your &ldquo;private&rdquo; VPC subnet via the router EC2 instance. This &ldquo;route&rdquo; object can be then associated with any other &ldquo;private&rdquo;
+subnet you may create later on and required to support outgoing Internet access.</p>
+
+<h4>Prepare the OpenVPN Server on pfSense</h4>
+
+<p>You will need to create a <code>ccd</code> entry for your VPC EC2 instance to ensure, that the client always gets the same tunnel IP from the server, as well as for the ability to be
+able to publish the remote networks on the client side to the server. It&rsquo;s very simple with the web-ui of pfSense, hence I just show the relevant config entry here, should
+you need to set this on console:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ifconfig-push 192.168.0.254 192.168.0.253
+</span><span class='line'>iroute 10.0.0.0 255.255.255.0
+</span><span class='line'>iroute 10.0.1.0 255.255.255.0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>These routes however required to be added to the relevant server config too (if your run multiple). Again, this is easy on web-ui, relevant config entries are:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>route 10.0.0.0 255.255.255.0
+</span><span class='line'>route 10.0.1.0 255.255.255.0
+</span><span class='line'>push <span class="s2">&quot;route 10.100.100.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.100.200.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.100.300.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.0.0.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.0.1.0 255.255.255.0&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Why the redundant route and iroute statements, you might ask? The reason is that route controls the routing from the kernel to the OpenVPN server (via the TUN interface)
+while iroute controls the routing from the OpenVPN server to the remote clients.</p>
+
+<p>And finally, the push-route lines add networks to all VPN clients for all networks available on both side of the tunnel between pfSense and VPC. The reason for this is that
+when I connect to the pfSense VPN server with my laptop, I want routes set for both, the office and the VPC networks so I can reach everything while away.</p>
+
+<h2>Launch the Router Instance</h2>
+
+<p>The only thing you need to pay attention to:</p>
+
+<ul>
+<li>Ensure that you launch the instance to the correct &ldquo;public&rdquo; subnet of your VPC</li>
+<li>Ensure you set the instance to use the prepared &ldquo;network interface&rdquo; object</li>
+</ul>
+
+
+<p>Once running, you should be able to reach it via SSH protocol over its public address. Depending on your distro of choice, you may need to turn on routing if not enabled by
+default in the kernel:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sysctl -w net.ipv4.ip_forward<span class="o">=</span>1
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OR</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo </span><span class="m">1</span> &gt; /proc/sys/net/ipv4/ip_forward
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Install then configure your OpenVPN client, set it to run at boot, start, etc. Note: there is nothing specific you need to configure as long as you run client here.
+Add a couple of iptables rules to NAT traffic coming from your VPC destined to the Internet:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>iptables -A POSTROUTING -s 10.0.0.0/16 -d 10.0.0.0/16 -m comment --comment <span class="s2">&quot;VPC-&gt;VPC:SKIP&quot;</span> -j ACCEPT
+</span><span class='line'>iptables -A POSTROUTING -s 10.0.0.0/16 -d 10.100.0.0/16 -m comment --comment <span class="s2">&quot;AWS-&gt;REMOTE SUBNETS:SKIP&quot;</span> -j ACCEPT
+</span><span class='line'>iptables -A POSTROUTING -o eth0 -s 10.0.1.0/24 -m comment --comment <span class="s2">&quot;SUBNET-PRIVATE-&gt;INTERNET:MASQ&quot;</span> -j SNAT --to-source 10.0.0.8
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We need the ACCEPT rules to avoid rewriting traffic between VPC subnets as well as between VPC and remote subnets, otherwise they have no affect. Make sure you save the
+rules and enable firewall service to run during boot. Note: this config assumes you have NO other firewall rules configured, those should be added when you have working
+routing.</p>
+
+<p>You should be able to reach your instance after all this via it&rsquo;s private address. When you have a working setup, remove the SSH entry from the &ldquo;security group&rdquo; of your
+VPC for additional safety.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Couchbase Quota Explained]]></title>
+    <link href="http://variia.github.io/couchbase-quota-explained/"/>
+    <updated>2013-10-16T00:28:13+02:00</updated>
+    <id>http://variia.github.io/couchbase-quota-explained</id>
+    <content type="html"><![CDATA[<p>For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
+we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,
+disk is used for persistence only. It turns out that in this condition your usable RAM is lot less, 2 thirds of your allocated quota.</p>
+
+<!--more-->
+
+
+<p>I always found it hard to come up with a number for bucket quota. It depends on the key size which can vary, the number of keys expected to be stored, your expiry
+on keys, etc. So what we do is essentially oversize the buckets initially (as long as we can afford it with RAM of course), then observe and perhaps adjust it later on
+but this gets harder when you start utilising your cluster RAM.</p>
+
+<p><img src="http://variia.github.io/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
+
+<p>I had a solid understanding of the &ldquo;mem_low_wat&rdquo; and &ldquo;mem_high_wat&rdquo; watermarks, I just didn&rsquo;t know their impact and how their values are calculated.
+The <a href="http://www.couchbase.com/docs/couchbase-manual-2.0/couchbase-introduction-architecture-ejection-eviction.html" target="_blank">working set management guide</a>
+explains this, I am not going to repeat what is discussed in that, just reflect what happens in real life.</p>
+
+<p>In my case the default ratio (per bucket):</p>
+
+<p><strong>mem_low_wat = ~60%</strong> (of your dynamic RAM quota)</p>
+
+<p><strong>mem_high_wat = ~75%</strong> (of your dynamic RAM quota)</p>
+
+<blockquote><p>In nutshell: when a certain amount of RAM is consumed by items, the server will eject items starting with replica data. This threshold is known as the low water mark.
+If higher threshold is breached, Couchbase Server will not only eject replica data, it will also eject less-frequently used items.</p>
+
+<p>This ejection happens at node level.</p></blockquote>
+
+<p>I have always monitored both, the resident ratios and of course the quotas but missed the &ldquo;low&rdquo; and especially the &ldquo;high&rdquo; watermarks. This turned out to be problematic
+in the last couple of weeks, our cluster lost it&rsquo;s harmony and we started fetching from disk which adds an extra 100-200us latency to our average GETs occasionally.
+One of my buckets is somewhat large, currently the quota is set to 100GB (400GB across 4 nodes) and the bucket holds 500+ Million keys. If you consider the ratio above,
+the default behaviour sets the &ldquo;mem_high_wat&rdquo; to 100GB, that is a lot of RAM to be wasted!</p>
+
+<p><strong>Explanation:</strong></p>
+
+<p>In layman&rsquo;s term:  it&rsquo;s a buffer, it&rsquo;s a protection against unexpected large write spike, node failure, manual failover, rebalance, etc. If the bucket&rsquo;s memory usage
+reaches 90% of its quota allocation, the application would start throwing &ldquo;temporary out of memory errors&rdquo; which would of course need to be handled some ways.
+If an application is not coded to handle this type of exception, writes/reads may fail.</p>
+
+<p>While these watermarks can be changed on per node / per bucket basis, it&rsquo;s strongly recommended not to do so as it can potentially put your data at risk.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Couchbase 1.8 Persistence]]></title>
+    <link href="http://variia.github.io/couchbase-1-8-persistence/"/>
+    <updated>2013-05-21T13:34:53+02:00</updated>
+    <id>http://variia.github.io/couchbase-1-8-persistence</id>
+    <content type="html"><![CDATA[<p><a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the <em>memcached</em> bucket is limited, does not
+support persistence, failover so this article is about the <em>couchbase</em> bucket type and its maintenance.</p>
+
+<p>We tend to forget the fact, that this bucket is persisted so every single key is saved to disk. This means you have a copy in memory (assume your
+resident ratio is 100%) and on disk. Depending on your cluster setup, you will likely to have at least another copy in another node&rsquo;s memory
+and its disk. (4 copies altogether)</p>
+
+<!--more-->
+
+
+<p>With the added metadata overhead, it&rsquo;s fair to say that you actually need more disk space on each node than memory, to be able to fully utilise your
+node&rsquo;s memory and you have to consider this when you size your hardware. Couchbase 2.x requires even more disk-space (2 x your RAM) per node due to
+the JSON indexes and changed persistence layer.</p>
+
+<h2>Update</h2>
+
+<p>Note: the behavior/technique explained here only true up to a certain size, aka vacuum is only practical for smaller databases. For large databases
+(10G+ per file), it&rsquo;s much more efficient to fail over the node then add it back to the cluster followed by rebalance.</p>
+
+<h2>The Keys</h2>
+
+<p>Depending on what you use a <em>key-value</em> store for, it&rsquo;s fairly common, that the data you store changes frequently and how long it will remain in your
+bucket depends on the expiry you set on creation.</p>
+
+<p><em>You have to nail the expiry to prevent bloating the store or deleting important dataset too early</em></p>
+
+<p>We started loading one of our high performance buckets and set the expiry initially to 30 days. Unfortunately we didn&rsquo;t realize at that point, that we
+get more data from web visitors, than we delete (by expiry) so our bucket got bloated with approximately 500 - 600 Million keys. (39G in memory, 45G on
+disk per node) This pushed our resident ratio down to 24% approximately, which was not really an issue until we started actually fetching data for our
+testing.</p>
+
+<h2>The Cleanup</h2>
+
+<p>We could have raised the bucket quota since we had free RAM, but we knew the bucket was bloated with stale data, so the only option we had was to clean
+it up. We set the expiry immediately in our code to 7 days, but it only affected newly created keys so we had to wait 4 weeks before we actually saw
+our store reducing in size.</p>
+
+<p><img src="http://variia.github.io/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
+
+<p>Our bucket <strong>started reducing</strong> in size around January <strong>but only in memory</strong>, the green area representing the disk usage remained the same.</p>
+
+<p>By early February we reached our target size, but our disk was still bloated and it had to be claimed back, although it was not as simple as you may think.</p>
+
+<h2>SQL Fragmentation</h2>
+
+<p>Couchbase 1.8 uses SQLite3 to persist the data, it comes with the product installer package. The <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a>
+(login required) from the support portal explains this very well although in real life scenario, I believe there is a little more to it.</p>
+
+<h2>The not so easy way</h2>
+
+<p>Make sure you have <em>auto-failover</em> set, remove the node to be cleaned followed by <em>rebalance</em>. When finished add the node back to the cluster and complete <em>rebalance</em> again.
+When you initiate the <em>rebalance</em> operation the entire Couchbase data area on your disk is deleted, keys and metadata will be synced across all live nodes.</p>
+
+<p><em>In production, even off peak, this is a very heavy operation</em></p>
+
+<p><strong>Every node</strong> will be hitting the disk hard, CPU usage will increase, response times and latency will be poor. One node took approximately 2 x 20 minutes,
+on our small 4 node cluster it&rsquo;s 160 minutes and it&rsquo;s best case scenario. When fully utilized, this could go up as high as 12 hours just to clean our 4 node
+cluster and it&rsquo;s worth to mention that we have the fastest SSD available.
+The final important aspect of this method is that rebalance fails sometimes, there is a lot going on and it&rsquo;s somewhat <em>normal</em> according to 
+<a href="http://blog.couchbase.com/top-10-things-ops-sys-admin-must-know-about-couchbase" target="_blank">another article</a>. When it does you have to start
+the <em>rebalance</em> all over again, and it could go on for some time until you get all your nodes cleaned. This is something we could not afford, it&rsquo;s just not
+feasible for 24/7 operations.</p>
+
+<h2>Manual fragmentation</h2>
+
+<p>The idea is that you essentially make the data unavailable on a single node until the <em>VACUUM</em> runs then you just suck the data back into memory from the
+de-fragmented store. Yes, your active-replica will not be activated and in our case (4 node cluster) 25% of our data will not be accessible at all but for us
+it is better than having uselessly slow 100% while <em>rebalance</em> is running.</p>
+
+<p>This requires <em>auto failover</em> to be turned off, you can do it by a simple API call:</p>
+
+<figure class='code'><figcaption><span>in disable failover:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl <span class="s2">&quot;http://localhost:8091/settings/autoFailover&quot;</span> -i -u Administrator:<span class="s2">&quot;yourpassword&quot;</span> -d <span class="s1">&#39;enabled=false&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>followed by shutting the <em>coushbase-server</em> process down. When your server process is stopped, you can then <em>VACUUM</em> the database files individually as explained
+in the <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a> article.</p>
+
+<h2>The surprise</h2>
+
+<p>It may fail with the following error:</p>
+
+<p><code>Error: disk I/O error</code></p>
+
+<p>After some reading and digging, we found that SQLite3 makes a copy of your database on the fly to <code>/var/tmp</code> then runs the VACUUM over the temporary copy, on success
+it copies the de-fragmented database back to its place. Our database files were ~35-40GB each and as much as we pay attention to partitioning when we build servers,
+we did not count that into our sizing. Not to mention that <code>/var/tmp</code> was not on SSD storage so the VACUUM was slow too, hence we ended up with the following fix for
+our disk layout:</p>
+
+<figure class='code'><figcaption><span>mount:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/dev/sdb1 on /opt <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,data<span class="o">=</span>writeback,commit<span class="o">=</span>120<span class="o">)</span>
+</span><span class='line'>/opt/temp on /var/tmp <span class="nb">type </span>none <span class="o">(</span>rw,bind<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Couchbase lives under <code>/opt</code> default so we mounted our fast SSD disk (sdb) there during installation, thus we just added some performance tuning options to our EXT4
+file system.</p>
+
+<p>Then we created a temporary folder at <code>/opt/temp</code> and mounted <code>/var/tmp</code> to it. This way we got enough space to complete the database <em>VACUUM</em> and we moved this high
+IO operation to our fastest drive available.</p>
+
+<p>At completion, start the server process and <a href="http://www.couchbase.com/docs/couchbase-manual-1.8/couchbase-monitoring-startup.html" target="_blank">monitor</a>
+the warmup. This method was not only faster, but leaves 75% of our data intact and fast not to mention that we do not have to risk wasting time on <em>rebalance</em> failures.
+At last but not least re-enable your <em>auto failover</em> when all of your nodes are done:</p>
+
+<figure class='code'><figcaption><span>enable failover:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>curl <span class="s2">&quot;http://localhost:8091/settings/autoFailover&quot;</span> -i -u Administrator:<span class="s2">&quot;yourpassword&quot;</span> -d <span class="s1">&#39;enabled=true&amp;timeout=30&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Hands-on With Couchbase]]></title>
@@ -22,6 +1900,9 @@
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
 challenges.</p>
+
+<!--more-->
+
 
 <h2>Background</h2>
 
@@ -36,9 +1917,6 @@ user group so support was difficult. <code>memcached</code> always looked promis
 re-brandings in a short period but it used <code>memcached</code> under the hood along with seamless clustering, auto-recovery and disk
 persistence. Sounds like a dream? Well it was, but we had to wake up quickly in the middle of our migration because it was
 just not going the way we wanted to.</p>
-
-<!--more-->
-
 
 <h2>The Cluster</h2>
 

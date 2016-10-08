@@ -1,0 +1,458 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Integrating Networks Over VPN With Amazon VPC - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Cost effective way of connecting your office networks with pfSense 2.1.3 to Amazon VPC over OpenVPN terminated on an EC2 instance.">
+  <meta name="keywords" content="amazon,ec2,vpc,vpn,openvpn,2 way tunnel,routing">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/integrating-networks-vpn-amazon-vpc/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Integrating Networks Over VPN With Amazon VPC</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-05-19T00:21:58+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:21 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
+This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
+should your resource requirements increase and so forth.</p>
+
+<p>This guide is going to be technical, intended for experienced professionals where I will be discussing options and solutions to securely integrate your onsite
+(private) LANs with Amazon VPC. It is based on OpenVPN client running on an instance inside VPC, connecting to my remote branch firewall running pfSense 2.1.3
+and OpenVPN server. The point-to-point tunnel between the client / server is 2-way, both the client and the server expose their local networks and route traffic
+to the other side accordingly. But first, let&rsquo;s take a look at what other option we have.</p>
+
+<!--more-->
+
+
+<h2>Amazon VPC VPN</h2>
+
+<p>This is built into VPC and utilizes IPsec which operates on OSI model layer 3 and 4. This technology has been out there for long time, considered fairly secure
+and supported on many hardware appliances from most well known vendors. Since it operates on lower layer of the OSI model, it&rsquo;s not intended for end users such as
+desktop computers, mobile devices, it&rsquo;s more suitable for connecting networks aka site-to-site VPN.</p>
+
+<h4>Features and Benefits</h4>
+
+<ol>
+<li>Secure. In fact, it was not affected by the recently discovered <a href="http://heartbleed.com" target="_blank">Heartbleed</a> bug of OpenSSL as it&rsquo;s using
+ crypto built into the kernel.</li>
+<li>Supports dynamic route management with iBGP, suitable for corporate networks with lots of local LANs.</li>
+<li>Somewhat easy to implement, widely supported on many hardware platforms, appliances as well as open source software such as
+ <a href="https://www.openswan.org" target="_blank">Openswan</a> or <a href="https://www.strongswan.org" target="_blank">strongSwan</a>.</li>
+<li><a href="https://aws.amazon.com/vpc/pricing/" target="_blank">Cheap</a>. Currently it&rsquo;s approximately ~$1 / per day depending on region.</li>
+<li>It&rsquo;s really the easiest, simplest, out of box solution at this time of writing.</li>
+</ol>
+
+
+<p>There is a few good guides out there to get you started, however the easiest and most up-to-date is on
+<a href="https://docs.openvpn.net/how-to-tutorialsguides/administration/extending-vpn-connectivity-to-amazon-aws-vpc-using-aws-vpc-vpn-gateway-service" target="_blank">OpenVPN&rsquo;s website</a>.</p>
+
+<h2>VPN terminated on an EC2 Instance inside your VPC</h2>
+
+<p>While it does share some features with IPsec, there are a couple of special ones that apply to OpenVPN:</p>
+
+<ul>
+<li>Cost savings. Yes, $1 a day is cheap and I have a supported hardware at my branch endpoint, BUT I already have a requirement to run an instance 24/7 inside my VPC
+doing DNS, NTP, git, etc. Adding a VPN and routing functionality on top of those are not hard and just makes sense. I would rather spend that $1 / day on other great
+services such as S3 storage or CloudWatch.</li>
+<li>Internet availability inside VPC. While the IPsec VPN is superb, it does not provide you internet for your VPC resources, VPC meant to be private, no public traffic
+in / out. So if I have to have an instance doing SNAT for outgoing Internet inside the VPC, then why not terminate the VPN on the same instance?</li>
+</ul>
+
+
+<h4>Build your VPC</h4>
+
+<p><img src="/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
+
+<p>I will not going into too much detail here, just share the important bits I encountered during my setup. The Amazon guide is well written, please read it for full understanding
+of the <a href="http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Scenario2.html" target="_blank">concept</a>.</p>
+
+<ul>
+<li>Create a VPC with a preferably /16 mask. eg: <code>10.0.0.0/16</code> (Note: CIDR mask must be between /16 and /28)</li>
+<li>Create at least 2 subnets that overlap with your the VPC CIDR mask, preferably /24. eg: <code>10.0.0.0/24</code>, <code>10.0.1.0/24</code>. One will be your private LAN with outgoing only Internet,
+the other public with in and outgoing Internet.</li>
+<li>Create a VPC &ldquo;Internet Gateway&rdquo;, attach it to your VPC.</li>
+<li>Ignore &ldquo;Network ACL&rdquo; for now, defaults are fine.</li>
+</ul>
+
+
+<p>Pick a private IP address from your public /24 subnet you created in your VPC. eg: <code>10.0.0.8</code> This will be the internal address for your EC2 router. <em>While you cannot use
+static private IP addresses inside VPC at this time of writing, you can associate certain addresses to instances. They still use DHCP but always get the same address, most
+likely via MAC address mapping.</em></p>
+
+<ul>
+<li>Associate an &ldquo;Elastic IP Address&rdquo; aka public IP for your VPC if you have no free available. Use &ldquo;network interface&rdquo; association since we have no instance running yet,
+and use the private IP you picked above. This essentially creates a &ldquo;network interface&rdquo; object and adds your selected public / private IPs to it.</li>
+<li>Create a DHCP option set (optional) if you want to dish out your own DNS servers, domain names, etc. for your VPC instances, but it&rsquo;s not required for the VPN routing.</li>
+<li>Make sure the security group attached to your VPC has port 22 open for 0.0.0.0/0. This is important initially for being able to reach your newly created &ldquo;router&rdquo; instance
+via the public elastic IP until you sort out the internal routing, firewalling, VPN, etc.</li>
+<li>You will have a default &ldquo;route&rdquo; object attached to your VPC, and it will be set to &ldquo;Main&rdquo;. I recommend to leave that untouched which routes only it&rsquo;s own VPC traffic
+by default. It&rsquo;s important for security reasons because &ldquo;Main" always applies to a subnets that are not associated with any custom "route&rdquo; object.</li>
+</ul>
+
+
+<p>Then, create a custom &ldquo;route&rdquo; object, associate that with your &ldquo;public&rdquo; VPC subnet where the VPN instance resides. eg: <code>10.0.0.0/24</code>. and add your default route to it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0.0.0.0/0          igw-yourid
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This essentially gives you internet access for outgoing traffic.</p>
+
+<p>NOTE: networks available inside your VPN EC2 instance (aka networks on the far side of your OpenVPN tunnel) will not be available for any other other instance you launch
+into this &ldquo;public&rdquo; subnet of your VPC. If you need to reach any of those by their internal VPC IP, you will have to add them to the custom &ldquo;route&rdquo; object you associated
+with the &ldquo;public&rdquo; subnet as follows:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>192.168.0.0/24         eni-ID
+</span><span class='line'>10.100.100.0/24        eni-ID
+</span><span class='line'>10.100.200.0/24        eni-ID
+</span><span class='line'>10.100.300.0/24        eni-ID
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The ID is the &ldquo;network interface&rdquo; object you mapped your elastic IP to (attached to your VPN instance). The private class C address is my OpenVPN client network, the other
+3 are the LANs behind the pfSense VPN server. You also have to remember, that all instances MUST have elastic IP associated to them inside your &ldquo;public&rdquo; VPC subnet, they
+will not be able to use the VPN router instance!</p>
+
+<p>Create another custom &ldquo;route&rdquo; object, associate it with your &ldquo;private&rdquo; VPC subnet eg: <code>10.0.1.0/24</code> and add the following route to it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>0.0.0.0/0          eni-ID
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This will add default route to all instances for your &ldquo;private&rdquo; VPC subnet via the router EC2 instance. This &ldquo;route&rdquo; object can be then associated with any other &ldquo;private&rdquo;
+subnet you may create later on and required to support outgoing Internet access.</p>
+
+<h4>Prepare the OpenVPN Server on pfSense</h4>
+
+<p>You will need to create a <code>ccd</code> entry for your VPC EC2 instance to ensure, that the client always gets the same tunnel IP from the server, as well as for the ability to be
+able to publish the remote networks on the client side to the server. It&rsquo;s very simple with the web-ui of pfSense, hence I just show the relevant config entry here, should
+you need to set this on console:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ifconfig-push 192.168.0.254 192.168.0.253
+</span><span class='line'>iroute 10.0.0.0 255.255.255.0
+</span><span class='line'>iroute 10.0.1.0 255.255.255.0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>These routes however required to be added to the relevant server config too (if your run multiple). Again, this is easy on web-ui, relevant config entries are:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>route 10.0.0.0 255.255.255.0
+</span><span class='line'>route 10.0.1.0 255.255.255.0
+</span><span class='line'>push <span class="s2">&quot;route 10.100.100.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.100.200.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.100.300.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.0.0.0 255.255.255.0&quot;</span>
+</span><span class='line'>push <span class="s2">&quot;route 10.0.1.0 255.255.255.0&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Why the redundant route and iroute statements, you might ask? The reason is that route controls the routing from the kernel to the OpenVPN server (via the TUN interface)
+while iroute controls the routing from the OpenVPN server to the remote clients.</p>
+
+<p>And finally, the push-route lines add networks to all VPN clients for all networks available on both side of the tunnel between pfSense and VPC. The reason for this is that
+when I connect to the pfSense VPN server with my laptop, I want routes set for both, the office and the VPC networks so I can reach everything while away.</p>
+
+<h2>Launch the Router Instance</h2>
+
+<p>The only thing you need to pay attention to:</p>
+
+<ul>
+<li>Ensure that you launch the instance to the correct &ldquo;public&rdquo; subnet of your VPC</li>
+<li>Ensure you set the instance to use the prepared &ldquo;network interface&rdquo; object</li>
+</ul>
+
+
+<p>Once running, you should be able to reach it via SSH protocol over its public address. Depending on your distro of choice, you may need to turn on routing if not enabled by
+default in the kernel:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sysctl -w net.ipv4.ip_forward<span class="o">=</span>1
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OR</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo </span><span class="m">1</span> &gt; /proc/sys/net/ipv4/ip_forward
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Install then configure your OpenVPN client, set it to run at boot, start, etc. Note: there is nothing specific you need to configure as long as you run client here.
+Add a couple of iptables rules to NAT traffic coming from your VPC destined to the Internet:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>iptables -A POSTROUTING -s 10.0.0.0/16 -d 10.0.0.0/16 -m comment --comment <span class="s2">&quot;VPC-&gt;VPC:SKIP&quot;</span> -j ACCEPT
+</span><span class='line'>iptables -A POSTROUTING -s 10.0.0.0/16 -d 10.100.0.0/16 -m comment --comment <span class="s2">&quot;AWS-&gt;REMOTE SUBNETS:SKIP&quot;</span> -j ACCEPT
+</span><span class='line'>iptables -A POSTROUTING -o eth0 -s 10.0.1.0/24 -m comment --comment <span class="s2">&quot;SUBNET-PRIVATE-&gt;INTERNET:MASQ&quot;</span> -j SNAT --to-source 10.0.0.8
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We need the ACCEPT rules to avoid rewriting traffic between VPC subnets as well as between VPC and remote subnets, otherwise they have no affect. Make sure you save the
+rules and enable firewall service to run during boot. Note: this config assumes you have NO other firewall rules configured, those should be added when you have working
+routing.</p>
+
+<p>You should be able to reach your instance after all this via it&rsquo;s private address. When you have a working setup, remove the SSH entry from the &ldquo;security group&rdquo; of your
+VPC for additional safety.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-05-19T00:21:58+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:21 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/amazon-web-services/'>amazon web services</a>, <a class='category' href='/blog/categories/cloud/'>cloud</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/integrating-networks-vpn-amazon-vpc/" data-via="" data-counturl="http://variia.github.io/integrating-networks-vpn-amazon-vpc/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/couchbase-quota-explained/" title="Previous Post: Couchbase Quota Explained">&laquo; Couchbase Quota Explained</a>
+      
+      
+        <a class="basic-alignment right" href="/script-clone-saltstack-formulas-github/" title="Next Post: Script to Clone SaltStack Formulas from GitHub">Script to Clone SaltStack Formulas from GitHub &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

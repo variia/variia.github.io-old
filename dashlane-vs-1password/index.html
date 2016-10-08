@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Dashlane vs 1Password - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Dashlane vs 1Password, a quick and dirty comparison of the two, most secure, most well known password managers in 2014.">
+  <meta name="keywords" content="dashlane,1password,comparison,versus">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/dashlane-vs-1password/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Dashlane vs 1Password</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-17T00:33:29+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:33 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
+for years and happy with it except a couple of things:</p>
+
+<ul>
+<li>written in .NET so cross platform integration has its challenges</li>
+<li>browser integration</li>
+</ul>
+
+
+<p>Although the browser integration is reasonably good now on Windows, it&rsquo;s not as <em>refined</em> as its commercial competitors such as <a href="https://www.dashlane.com" target="_blank">Dashlane </a> or
+<a href="https://agilebits.com/onepassword" target="_blank">1Password</a>. So I decided to investigate these utilities to see if they can convince me to switch.</p>
+
+<!--more-->
+
+
+<h2>Update - July 28th, 2014:</h2>
+
+<p>I have to admit, that most of my concerns around 1Password were related to the earlier Windows version. Since my evaluation,
+<a href="http://blog.agilebits.com/2014/06/17/1password-4-for-windows-is-here/" target="_blank">1Password 4 was made available for Windows</a> and looks, feels, behaves exactly
+like on OSX.</p>
+
+<p>I am very happy to say that, I made the switch and I am a satisfied 1Password customer ever since. In the end, I decided not to look at cost when it comes to security,
+and <a href="http://blog.agilebits.com/2014/07/16/1password-is-a-very-safe-basket/" target="_blank">it seems that I made the right decision.</a></p>
+
+<h2>Dashlane vs 1Password</h2>
+
+<p>I didn&rsquo;t want to go into detail and compare the core or advanced features of these apps, you can find elsewhere. My goal was to find something more convenient and easier to
+use than KeePass but keeping the balance between security, functionality and convenience.</p>
+
+<p>It was also important to me how <em>trusted</em> the vendor is, what kind of reputation they may have and how easy it is to get my data, should they disappear from the market.</p>
+
+<p>This is purely my gut feeling / opinion and based on my quick and dirty trial based on versions available at this time of writing. I looked at how they compare to my current
+software KeePass regarding functionality, security, design, look / feel and above all, how easy the transition would be.</p>
+
+<h4>Dashlane pros:</h4>
+
+<ul>
+<li>offline or online: you only have to be online while register an account, it does not affect working with an already created local database if you choose not to pay or
+turn off cloud sync</li>
+<li>secure: 2 factor authentication supported</li>
+<li>clean interface: identical look / feel on both Windows and OSX</li>
+<li>security and authorisation: even if you just want to create a brand new local valet (without cloud sync) on a &ldquo;new&rdquo; device, it needs to be &ldquo;approved&rdquo; with an online
+code sent to the registered email. Dashlane essentially tracks the devices associated with an account regardless you sync to the cloud or not.</li>
+<li>browser integration: seamless plugin install and integration during setup</li>
+<li>auto login: no need to click (most websites) on submit button ever again. If you happen to have multiple accounts for a single site you will have an &ldquo;drop down&rdquo; list to
+select from.</li>
+<li>export: csv and its own encrypted .dash format</li>
+<li>cost: subscription based, annual fee then you can sync your valet to unlimited number of devices including mobile</li>
+<li>support: good although over email a bit slow</li>
+<li>security dashboard: gives you warnings about reused passwords, compromised accounts, etc.</li>
+</ul>
+
+
+<h4>Dashlane cons:</h4>
+
+<ul>
+<li>icon view: I hated it, I don&rsquo;t need a thumbnail to identify an account, no detailed &ldquo;list like&rdquo; view. To see any details about any accounts, I had to click on them individually</li>
+<li>no copy item: I had to fill new entry for few similar items even if 2 fields changed only</li>
+<li>the interface: designed for web accounts only, not so useful for example PIN numbers where there is no username, it simply won&rsquo;t save without username field filled</li>
+<li>import mismatch: The account name and access URLs are really important for autofill, although I had some websites in the valet after import, on visit I got the popup
+offering account creation which indicated failed match against my valet stored entry</li>
+<li>idle lock only: no option to lock on screen lock, etc. although it&rsquo;s not so much of a concern for an average user</li>
+<li>import: KeePass import is Windows only, although works sort of well</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>main window: over-engineered, password &ldquo;categories&rdquo; does not help to organise accounts. Over 100+ accounts this view becomes overwhelming and confusing</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+<li>security: I didn&rsquo;t like the idea of having the ability to log into their website and browse my password valet (paid only)</li>
+<li>logo: I just cannot personally associate &ldquo;antiloop&rdquo; with password management</li>
+</ul>
+
+
+<h4>1Password pros:</h4>
+
+<ul>
+<li>offline or online: no built in cloud sync option, Google Drive, iCloud, Dropbox, WiFi or just local valet, it&rsquo;s your choice</li>
+<li>design: love the application on OSX, similar to KeePass, easy to see details, password strength, etc. in a &ldquo;detailed like&rdquo; list view</li>
+<li>main window: collapsible folder options, excellent organisation and tags, really nice looking interface</li>
+<li>import: KeePass import allows &ldquo;field&rdquo; selection from the CSV export to mach 1Password fields which comes handy for complex entries</li>
+<li>security: <a href="http://blog.agilebits.com/2013/03/06/you-have-secrets-we-dont-why-our-data-format-is-public/" target="_blank">openly published security design</a></li>
+<li>trusted: stable software from vendor with good reputation</li>
+<li>support: great support and community forums</li>
+<li>export: csv, text or its own .pif format</li>
+<li>shared vault: could be very handy between family members</li>
+<li>security audit: reports weak passwords, old or duplicated entries, etc.</li>
+</ul>
+
+
+<h4>1Password cons:</h4>
+
+<ul>
+<li>overpriced: no subscription and copies need to be purchased for multiple devices, mobile is also extra</li>
+<li>Windows version: may be identical functionality wise but looks / feels totally different to OSX. Ugly, clumsy and suggest very early development.</li>
+<li>browser plugins: install is not part of the setup, needs to be done manually for each browser from various sources and it&rsquo;s convoluted / confusing especially on Windows</li>
+<li>no auto login: no auto field population either, even a simple browser does that. I don&rsquo;t know why I have to hit "CMD+\&ldquo; key combination to be able to populate fields and
+log in automatically.</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>no 2 factor authentication: and <a href="http://blog.agilebits.com/2011/09/23/two-factor-or-not-two-factor/" target="_blank">it&rsquo;s not even planned</a></li>
+<li>browser plugins based on &ldquo;websockets&rdquo; and it can break things or requires specific settings on some platforms , Windows especially</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+</ul>
+
+
+<h4>Verdict</h4>
+
+<p>No clear winner for me, decided to keep using KeePass until something better comes along. The big shock for me was the apache server authentication, neither of them could handle
+those popups so I was left with &ldquo;cut n' paste&rdquo; or &ldquo;save in the browser&rdquo;, which was a big deal as I have a lot of those.</p>
+
+<p>I liked Dashlane (2.4.1) but it needs refinement, something that 1Password (4.4.1) has on OSX but it is very pricey and I don&rsquo;t think it&rsquo;s justified compared to some of the missing
+features/ annoying bits. I also need at least Windows and OSX support, which is done well from Dashlane but 1Password is very much beta on Windows and I am not even sure, on
+what grounds they can charge money for it.</p>
+
+<p>I have not evaluated <a href="https://www.lastpass.com" target="_blank">Lastpass</a> yet, at this stage I simply
+<a href="http://arstechnica.com/security/2014/07/severe-password-manager-attacks-steal-digital-keys-and-data-en-masse/" target="_blank">do not trust that product</a> and their security practices.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-07-17T00:33:29+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:33 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/security/'>security</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/dashlane-vs-1password/" data-via="" data-counturl="http://variia.github.io/dashlane-vs-1password/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/running-pylint-in-pycharm/" title="Previous Post: Running Pylint in PyCharm">&laquo; Running Pylint in PyCharm</a>
+      
+      
+        <a class="basic-alignment right" href="/load-balancing-and-sticky-sessions-by-url-parameter/" title="Next Post: Load Balancing and Sticky Sessions by URL Parameter">Load Balancing and Sticky Sessions by URL Parameter &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

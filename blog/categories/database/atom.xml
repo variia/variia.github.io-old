@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Database | Ivan Vari]]></title>
   <link href="http://variia.github.io/blog/categories/database/atom.xml" rel="self"/>
   <link href="http://variia.github.io/"/>
-  <updated>2016-09-25T13:31:25+02:00</updated>
+  <updated>2016-10-08T06:12:43+02:00</updated>
   <id>http://variia.github.io/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,166 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Couchbase Quota Explained]]></title>
+    <link href="http://variia.github.io/couchbase-quota-explained/"/>
+    <updated>2013-10-16T00:28:13+02:00</updated>
+    <id>http://variia.github.io/couchbase-quota-explained</id>
+    <content type="html"><![CDATA[<p>For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
+we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,
+disk is used for persistence only. It turns out that in this condition your usable RAM is lot less, 2 thirds of your allocated quota.</p>
+
+<!--more-->
+
+
+<p>I always found it hard to come up with a number for bucket quota. It depends on the key size which can vary, the number of keys expected to be stored, your expiry
+on keys, etc. So what we do is essentially oversize the buckets initially (as long as we can afford it with RAM of course), then observe and perhaps adjust it later on
+but this gets harder when you start utilising your cluster RAM.</p>
+
+<p><img src="http://variia.github.io/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
+
+<p>I had a solid understanding of the &ldquo;mem_low_wat&rdquo; and &ldquo;mem_high_wat&rdquo; watermarks, I just didn&rsquo;t know their impact and how their values are calculated.
+The <a href="http://www.couchbase.com/docs/couchbase-manual-2.0/couchbase-introduction-architecture-ejection-eviction.html" target="_blank">working set management guide</a>
+explains this, I am not going to repeat what is discussed in that, just reflect what happens in real life.</p>
+
+<p>In my case the default ratio (per bucket):</p>
+
+<p><strong>mem_low_wat = ~60%</strong> (of your dynamic RAM quota)</p>
+
+<p><strong>mem_high_wat = ~75%</strong> (of your dynamic RAM quota)</p>
+
+<blockquote><p>In nutshell: when a certain amount of RAM is consumed by items, the server will eject items starting with replica data. This threshold is known as the low water mark.
+If higher threshold is breached, Couchbase Server will not only eject replica data, it will also eject less-frequently used items.</p>
+
+<p>This ejection happens at node level.</p></blockquote>
+
+<p>I have always monitored both, the resident ratios and of course the quotas but missed the &ldquo;low&rdquo; and especially the &ldquo;high&rdquo; watermarks. This turned out to be problematic
+in the last couple of weeks, our cluster lost it&rsquo;s harmony and we started fetching from disk which adds an extra 100-200us latency to our average GETs occasionally.
+One of my buckets is somewhat large, currently the quota is set to 100GB (400GB across 4 nodes) and the bucket holds 500+ Million keys. If you consider the ratio above,
+the default behaviour sets the &ldquo;mem_high_wat&rdquo; to 100GB, that is a lot of RAM to be wasted!</p>
+
+<p><strong>Explanation:</strong></p>
+
+<p>In layman&rsquo;s term:  it&rsquo;s a buffer, it&rsquo;s a protection against unexpected large write spike, node failure, manual failover, rebalance, etc. If the bucket&rsquo;s memory usage
+reaches 90% of its quota allocation, the application would start throwing &ldquo;temporary out of memory errors&rdquo; which would of course need to be handled some ways.
+If an application is not coded to handle this type of exception, writes/reads may fail.</p>
+
+<p>While these watermarks can be changed on per node / per bucket basis, it&rsquo;s strongly recommended not to do so as it can potentially put your data at risk.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Couchbase 1.8 Persistence]]></title>
+    <link href="http://variia.github.io/couchbase-1-8-persistence/"/>
+    <updated>2013-05-21T13:34:53+02:00</updated>
+    <id>http://variia.github.io/couchbase-1-8-persistence</id>
+    <content type="html"><![CDATA[<p><a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the <em>memcached</em> bucket is limited, does not
+support persistence, failover so this article is about the <em>couchbase</em> bucket type and its maintenance.</p>
+
+<p>We tend to forget the fact, that this bucket is persisted so every single key is saved to disk. This means you have a copy in memory (assume your
+resident ratio is 100%) and on disk. Depending on your cluster setup, you will likely to have at least another copy in another node&rsquo;s memory
+and its disk. (4 copies altogether)</p>
+
+<!--more-->
+
+
+<p>With the added metadata overhead, it&rsquo;s fair to say that you actually need more disk space on each node than memory, to be able to fully utilise your
+node&rsquo;s memory and you have to consider this when you size your hardware. Couchbase 2.x requires even more disk-space (2 x your RAM) per node due to
+the JSON indexes and changed persistence layer.</p>
+
+<h2>Update</h2>
+
+<p>Note: the behavior/technique explained here only true up to a certain size, aka vacuum is only practical for smaller databases. For large databases
+(10G+ per file), it&rsquo;s much more efficient to fail over the node then add it back to the cluster followed by rebalance.</p>
+
+<h2>The Keys</h2>
+
+<p>Depending on what you use a <em>key-value</em> store for, it&rsquo;s fairly common, that the data you store changes frequently and how long it will remain in your
+bucket depends on the expiry you set on creation.</p>
+
+<p><em>You have to nail the expiry to prevent bloating the store or deleting important dataset too early</em></p>
+
+<p>We started loading one of our high performance buckets and set the expiry initially to 30 days. Unfortunately we didn&rsquo;t realize at that point, that we
+get more data from web visitors, than we delete (by expiry) so our bucket got bloated with approximately 500 - 600 Million keys. (39G in memory, 45G on
+disk per node) This pushed our resident ratio down to 24% approximately, which was not really an issue until we started actually fetching data for our
+testing.</p>
+
+<h2>The Cleanup</h2>
+
+<p>We could have raised the bucket quota since we had free RAM, but we knew the bucket was bloated with stale data, so the only option we had was to clean
+it up. We set the expiry immediately in our code to 7 days, but it only affected newly created keys so we had to wait 4 weeks before we actually saw
+our store reducing in size.</p>
+
+<p><img src="http://variia.github.io/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
+
+<p>Our bucket <strong>started reducing</strong> in size around January <strong>but only in memory</strong>, the green area representing the disk usage remained the same.</p>
+
+<p>By early February we reached our target size, but our disk was still bloated and it had to be claimed back, although it was not as simple as you may think.</p>
+
+<h2>SQL Fragmentation</h2>
+
+<p>Couchbase 1.8 uses SQLite3 to persist the data, it comes with the product installer package. The <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a>
+(login required) from the support portal explains this very well although in real life scenario, I believe there is a little more to it.</p>
+
+<h2>The not so easy way</h2>
+
+<p>Make sure you have <em>auto-failover</em> set, remove the node to be cleaned followed by <em>rebalance</em>. When finished add the node back to the cluster and complete <em>rebalance</em> again.
+When you initiate the <em>rebalance</em> operation the entire Couchbase data area on your disk is deleted, keys and metadata will be synced across all live nodes.</p>
+
+<p><em>In production, even off peak, this is a very heavy operation</em></p>
+
+<p><strong>Every node</strong> will be hitting the disk hard, CPU usage will increase, response times and latency will be poor. One node took approximately 2 x 20 minutes,
+on our small 4 node cluster it&rsquo;s 160 minutes and it&rsquo;s best case scenario. When fully utilized, this could go up as high as 12 hours just to clean our 4 node
+cluster and it&rsquo;s worth to mention that we have the fastest SSD available.
+The final important aspect of this method is that rebalance fails sometimes, there is a lot going on and it&rsquo;s somewhat <em>normal</em> according to 
+<a href="http://blog.couchbase.com/top-10-things-ops-sys-admin-must-know-about-couchbase" target="_blank">another article</a>. When it does you have to start
+the <em>rebalance</em> all over again, and it could go on for some time until you get all your nodes cleaned. This is something we could not afford, it&rsquo;s just not
+feasible for 24/7 operations.</p>
+
+<h2>Manual fragmentation</h2>
+
+<p>The idea is that you essentially make the data unavailable on a single node until the <em>VACUUM</em> runs then you just suck the data back into memory from the
+de-fragmented store. Yes, your active-replica will not be activated and in our case (4 node cluster) 25% of our data will not be accessible at all but for us
+it is better than having uselessly slow 100% while <em>rebalance</em> is running.</p>
+
+<p>This requires <em>auto failover</em> to be turned off, you can do it by a simple API call:</p>
+
+<pre><code class="bash in disable failover:">$ curl "http://localhost:8091/settings/autoFailover" -i -u Administrator:"yourpassword" -d 'enabled=false'
+</code></pre>
+
+<p>followed by shutting the <em>coushbase-server</em> process down. When your server process is stopped, you can then <em>VACUUM</em> the database files individually as explained
+in the <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a> article.</p>
+
+<h2>The surprise</h2>
+
+<p>It may fail with the following error:</p>
+
+<p><code>Error: disk I/O error</code></p>
+
+<p>After some reading and digging, we found that SQLite3 makes a copy of your database on the fly to <code>/var/tmp</code> then runs the VACUUM over the temporary copy, on success
+it copies the de-fragmented database back to its place. Our database files were ~35-40GB each and as much as we pay attention to partitioning when we build servers,
+we did not count that into our sizing. Not to mention that <code>/var/tmp</code> was not on SSD storage so the VACUUM was slow too, hence we ended up with the following fix for
+our disk layout:</p>
+
+<pre><code class="bash mount:">/dev/sdb1 on /opt type ext4 (rw,noatime,data=writeback,commit=120)
+/opt/temp on /var/tmp type none (rw,bind)
+</code></pre>
+
+<p>Couchbase lives under <code>/opt</code> default so we mounted our fast SSD disk (sdb) there during installation, thus we just added some performance tuning options to our EXT4
+file system.</p>
+
+<p>Then we created a temporary folder at <code>/opt/temp</code> and mounted <code>/var/tmp</code> to it. This way we got enough space to complete the database <em>VACUUM</em> and we moved this high
+IO operation to our fastest drive available.</p>
+
+<p>At completion, start the server process and <a href="http://www.couchbase.com/docs/couchbase-manual-1.8/couchbase-monitoring-startup.html" target="_blank">monitor</a>
+the warmup. This method was not only faster, but leaves 75% of our data intact and fast not to mention that we do not have to risk wasting time on <em>rebalance</em> failures.
+At last but not least re-enable your <em>auto failover</em> when all of your nodes are done:</p>
+
+<pre><code class="bash enable failover:">curl "http://localhost:8091/settings/autoFailover" -i -u Administrator:"yourpassword" -d 'enabled=true&amp;timeout=30'
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Hands-on With Couchbase]]></title>
@@ -22,6 +182,9 @@
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
 challenges.</p>
+
+<!--more-->
+
 
 <h2>Background</h2>
 
@@ -36,9 +199,6 @@ user group so support was difficult. <code>memcached</code> always looked promis
 re-brandings in a short period but it used <code>memcached</code> under the hood along with seamless clustering, auto-recovery and disk
 persistence. Sounds like a dream? Well it was, but we had to wake up quickly in the middle of our migration because it was
 just not going the way we wanted to.</p>
-
-<!--more-->
-
 
 <h2>The Cluster</h2>
 

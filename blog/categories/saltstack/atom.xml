@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Saltstack | Ivan Vari]]></title>
+  <link href="http://variia.github.io/blog/categories/saltstack/atom.xml" rel="self"/>
+  <link href="http://variia.github.io/"/>
+  <updated>2016-10-08T06:12:43+02:00</updated>
+  <id>http://variia.github.io/</id>
+  <author>
+    <name><![CDATA[Ivan Vari]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Merging Pillars in SaltStack]]></title>
+    <link href="http://variia.github.io/merging-pillars-in-saltstack/"/>
+    <updated>2014-08-16T23:26:41+02:00</updated>
+    <id>http://variia.github.io/merging-pillars-in-saltstack</id>
+    <content type="html"><![CDATA[<p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
+time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
+
+<!--more-->
+
+
+<h2>Merging Pillars in SaltStack</h2>
+
+<p>I wrote a reasonably complex formula to manage our DNS (bind9) servers including zone files. As a common approach, I decided to use Pillar for configuration to make the formula
+generic and reusable.</p>
+
+<p>My formula required the following Pillar data (YAML):</p>
+
+<pre><code class="yaml">bind:
+  config:
+    user: root
+    group: named
+    mode: 640
+    custom:
+      allow-query:
+        - 127.0.0.1
+        - 192.168.1.0/24
+      allow-transfer:
+        - 127.0.0.1
+        - 192.168.1.0/24
+      recursion: "yes"
+      zone-statistics: "yes"
+      transfer-format: many-answers
+      interface-interval: 0
+  zones:
+    domain.com:
+      config:
+        type: master
+        file: domain.com.hosts
+        also-notify:
+          - 192.168.1.1
+          - 192.168.1.2
+      soa:
+        ttl: 43200 ; 12 hours
+        email: hostmaster.domain.com.
+        refresh: 10800 ; 3h refresh
+        retry: 3600 ; 1h retry
+        expire: 604800 ; 1w expire
+        minimum: 10800 ; 3h minimum
+        ns:
+          - ns1.domain.com.
+          - ns6.otherdomain.net.
+          - ns7.other.sub.domain.org.
+    sub.domain.org:
+      config:
+        type: slave
+        file: slaves/sub.domain.org.hosts
+        masters:
+          - 192.168.1.1
+          - 192.168.1.2
+    sub.domain.net:
+      config:
+        type: forward
+        forward: only
+        forwarders:
+          - 172.16.1.1
+</code></pre>
+
+<p>To reuse my formula, I needed slightly different pillar for each DNS server but I wanted to reuse existing details to avoid duplication and pollution hence I ended up splitting
+the pillar into few files:</p>
+
+<pre><code class="bash">/srv/salt/pillar/base/bind/named.sls
+/srv/salt/pillar/base/bind/zones-master.sls
+/srv/salt/pillar/base/bind/zones-slave.sls
+/srv/salt/pillar/base/bind/zones-other.sls
+</code></pre>
+
+<p>This allows the use or import of the <code>named.sls</code> (core config) for every server and depending on &ldquo;role&rdquo; even additional zones as required:</p>
+
+<pre><code class="yaml /srv/salt/pillar/base/bind/named.sls:">bind:
+  config:
+    custom:
+      ...
+      ...
+</code></pre>
+
+<pre><code class="yaml /srv/salt/pillar/base/bind/zones-master.sls:">bind:
+  zones:
+    domain.com:
+      ...
+      ...
+</code></pre>
+
+<p>First, I tried adding <code>init.sls</code> with the "include" statement:</p>
+
+<p>
+<code>yaml
+include:
+  - bind.named
+{%- if grains['dnsrole'] == 'master' %}
+  - bind.zones-master
+  - bind.zones-other
+{%- endif %}
+</code>
+</p>
+
+<p>This did not work as expected, actually it overrides either the first subkey of the <code>named.sls</code> (custom) or the zone file (zone) depending on which gets read first during compile.</p>
+
+<p>I could have used the <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">include statement with the nesting </a>but it only works if I restructure
+the zone files and remove nesting from the bind key as well as include one zone.</p>
+
+<p>One option was to move this logic into the <code>top.sls</code>:</p>
+
+<pre><code class="yaml">base:
+  'roles:dns':
+    - match: grain
+    - bind.named
+    - bind.zones-master
+</code></pre>
+
+<p>This worked perfectly, my pillars were merged exactly the I way I wanted. However, I did not want to move a messy if-else logic there to target master/slave servers differently.
+Adding the if-else logic to the zone files looked not so ideal, changing the grain structure for better targeting seemed also just &ldquo;too much&rdquo; for what I needed to accomplish.</p>
+
+<h4>Template Engine to the Rescue</h4>
+
+<p>My solution was hiding <a href="http://salt.readthedocs.org/en/latest/ref/renderers/all/salt.renderers.jinja.html" target="_blank">here</a>, I just had to compose the recipe
+myself. This method can be used in state files as well giving you the much needed power of code reuse.</p>
+
+<p>
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/init.sls</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &amp;lsquo;bind/named.sls&amp;rsquo; as named with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &amp;lsquo;bind/zones-master.sls&amp;rsquo; as masters with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &amp;lsquo;bind/zones-slave.sls&amp;rsquo; as slaves with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &amp;lsquo;bind/zones-other.sls&amp;rsquo; as others with context -%</span><span class="p-Indicator">}</span><span class="l-Scalar-Plain">&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="l-Scalar-Plain">&lt;p&gt;{%- if grains[&amp;lsquo;dnsrole&amp;rsquo;] == &amp;lsquo;master&amp;rsquo; %}</span>
+</span><span class='line'><span class="l-Scalar-Plain">{%- do named.bind.update(masters.bind) %}</span>
+</span><span class='line'><span class="l-Scalar-Plain">{%- elif grains[&amp;lsquo;dnsrole&amp;rsquo;] == &amp;lsquo;slave&amp;rsquo; %}</span>
+</span><span class='line'><span class="l-Scalar-Plain">{%- do named.bind.update(slaves.bind) %}</span>
+</span><span class='line'><span class="l-Scalar-Plain">{%- endif %}&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="l-Scalar-Plain">&lt;p&gt;{%- do named.bind.zones.update(others.bind.zones) %}&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="l-Scalar-Plain">&lt;p&gt;{{ named }}</span>
+</span></code></pre></td></tr></table></div></figure>
+</p>
+
+<p>This imports all YAML files, compiles them as dictionaries and basically makes them available as objects by the given name. Then we just use the power of Jijna2 and carry out
+a dictionary update on specific objects from a specific nested key. To me it is readable, centralised and keeps the control inside the bind pillar, yet giving the power of flexibility.</p>
+
+<p>Minion targeting is now easy, keeping the <code>top.sls</code> clean and readable as possible:</p>
+
+<pre><code class="yaml">base:
+  'roles:dns':
+    - match: grain
+    - bind
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Script to Clone SaltStack Formulas From GitHub]]></title>
+    <link href="http://variia.github.io/script-clone-saltstack-formulas-github/"/>
+    <updated>2014-05-23T19:44:01+02:00</updated>
+    <id>http://variia.github.io/script-clone-saltstack-formulas-github</id>
+    <content type="html"><![CDATA[<p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
+formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
+and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may
+need in the near future so why not clone all of them and ensure I have a local copy of them for my development.</p>
+
+<p>The pages have been updated fairly regularly, more and more people contributing now to the project, which is great however it started to become tedious to find new formulas
+and I needed an automated solution to keep up to date with the changes.</p>
+
+<!--more-->
+
+
+<h4>Script to Clone SaltStack Formulas from GitHub</h4>
+
+<p>I could not find anything off-the-shelf, hence I had to come up with my own solution using python.</p>
+
+<pre><code class="python salt_github_formulas.py">#!/usr/bin/env python
+"""
+    Script to find github hosted SaltStack formulas and make a up-to-date local copies of them.
+"""
+
+import urllib2
+import re
+import os
+import subprocess
+
+
+__author__ = "Ivan Vari""
+__credits__ = ["Oliver Drake"]
+__license__ = "GPLv3"
+__version__ = None
+__maintainer__ = "Ivan Vari"
+
+
+URL = "https://github.com/saltstack-formulas"
+PATTERN = 'a href="(/saltstack.*)"\s'
+HOME = '{0}/development/saltstack-formulas'.format(os.environ['HOME'])
+
+
+def main():
+    """
+    Main function and control flow.
+    """
+
+    # print strings with color
+    # http://pythonhosted.org/ANSIColors-balises/ANSIColors.html
+    colorgrn = "\033[01;32m{0}\033[00m"
+    colorwht = "\033[1;37m{0}\033[00m"
+
+    # margin for aligned printing
+    width = 50
+
+    # default loop controls
+    lastpage = 1
+    page = 1
+
+    # until we reach lastpage
+    while lastpage &gt;= page:
+        page_url = URL + '?page={0}'.format(page)
+
+        connection = urllib2.Request(page_url)
+        response = urllib2.urlopen(connection)
+
+        # find all formula-references on the current page
+        for match in re.finditer(PATTERN, response.read()):
+            url = 'https://github.com' + match.group(1)
+
+            # if 1st page, extract last page id and update loop controls
+            if page == 1 and '?page=' in url:
+                ref = re.findall('page=\d*', url)
+                lastpage = int(max(ref).split('=')[1])
+
+            # then ignore the page id completely
+            if '?page=' not in url:
+                # extract the formula name from the URL
+                formula = url.split('/')[-1]
+                repocopy = os.path.join(HOME, formula)
+
+                # default assumes cloning
+                cmd = 'git clone {0} {1}'.format(url, repocopy)
+                exec_dir = '/'
+
+                # if local copy found, change exec_dir and method to pull
+                if os.path.exists(repocopy):
+                    cmd = 'git pull'.format(repocopy)
+                    exec_dir = repocopy
+
+                process = subprocess.Popen(cmd.split(),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.STDOUT,
+                                           cwd=exec_dir)
+
+                # default output definition
+                result = '[OK]'
+                flag = ''
+
+                # override output definition based on git output message
+                for line in process.stdout.readlines():
+                    if 'Cloning' in line:
+                        result = '[NEW]'
+                        flag = '*'
+                    elif 'Updating' in line:
+                        result = '[UP]'
+                        flag = '+'
+
+                margin = width - (len(result) + len(flag))
+
+                print '[{0}]: '.format(formula).ljust(margin, ' ') + '=&gt;' + \
+                      colorwht.format(flag) + colorgrn.format(result)
+        page += 1
+
+
+# boilerplate
+if __name__ == "__main__":
+    main()
+</code></pre>
+
+<p>This essentially parses the HTML of the front page and works out the available page numbers then fetches each page individually, filters out all formula references and runs git clone/pull over them depending whether we have local copy of it or not.</p>
+]]></content>
+  </entry>
+  
+</feed>

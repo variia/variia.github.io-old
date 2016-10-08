@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: Database - Ivan Vari</title>
+  <title>Solving Camel ActiveMQ Clients in TCP TIME_WAIT - Ivan Vari</title>
   <meta name="author" content="Ivan Vari">
 
   
-  <meta name="description" content="Category: database">
-  
+  <meta name="description" content="Solving camel activemq clients in tcp time_wait for java applications that make large number of asynchronous request.">
+  <meta name="keywords" content="camel,client,activemq,tcp,time_wait,solved">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://variia.github.io/blog/categories/database/">
+  <link rel="canonical" href="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
@@ -83,63 +83,126 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">Category: Database</h1>
+    
+      <h1 class="entry-title">Solving Camel ActiveMQ Clients in TCP TIME_WAIT</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-06-04T23:25:27+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:25 pm</span></time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+<div class="entry-content"><p>We are an agile software development company and agile is great for &ldquo;moving target&rdquo;. We plan, work and implement changes in small batches and ongoing re-factoring is just
+the nature of what we do.</p>
 
-  
-  <h2>2013</h2>
+<p>We recently added some functionality as well as increased traffic for one of our Java products utilising <a href="http://camel.apache.org" target="_blank">Apache Camel</a>
+and <a href="http://activemq.apache.org" target="_blank">ActiveMQ</a>. The product has been in production for years now, functioning with very much zero defect rate. Not soon
+after deploying the new code, our monitoring system triggered alerts about unusually high TCP TIME_WAIT connection states on the server where the new code was running. We
+began the troubleshooting process and found they were all ActiveMQ connections to our broker. Our developers immediately confirmed that</p>
 
-<article>
-  
-<h1><a href="/couchbase-quota-explained/">Couchbase Quota Explained</a></h1>
-<time datetime="2013-10-16T00:28:13+02:00" pubdate><span class='month'>Oct</span> <span class='day'>16</span> <span class='year'>2013</span></time>
+<p>&ldquo;<em>there was no change on the ActiveMQ connection manager side.</em>&rdquo;</p>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
+<p>Well, it turned out that it was exactly the problem.</p>
 
-
-</article>
+<!--more-->
 
 
+<h2>Solving Camel ActiveMQ Clients in TCP TIME_WAIT</h2>
 
-<article>
-  
-<h1><a href="/couchbase-1-8-persistence/">Couchbase 1.8 Persistence</a></h1>
-<time datetime="2013-05-21T13:34:53+02:00" pubdate><span class='month'>May</span> <span class='day'>21</span> <span class='year'>2013</span></time>
+<p>I started looking various aspects of our environment but was unable to pinpoint where the problem was coming from. So I shifted my focus onto our client implementation, despite
+the confirmation from the developers.</p>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
+<p><img src="/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
+
+<p>Note: it&rsquo;s perfectly natural to have these especially on systems that deal with lots of short lived requests from client connections over unreliable public networks. In nutshell,
+the local TCP stack waits for twice the maximum segment lifetime (MSL) to pass (120 sec default) before it finishes CLOSING to be sure that the remote end-point received the
+acknowledgement (and was not queued on upstream routers). Normally it&rsquo;s harmless, although in large volume could cause memory overflow.</p>
+
+<p>We did have enough <a href="http://en.wikipedia.org/wiki/Ephemeral_port" target="_blank">ephemeral ports</a> to support 3.5K TIME_WAIT sockets, my issue was that it was an
+extra ~1K and coming from my local network.</p>
+
+<p>While looking at our code, I spotted something interesting in our client implementation, we used <a href="http://activemq.apache.org/maven/apidocs/org/apache/activemq/spring/ActiveMQConnectionFactory.html" target="_blank"><em>ActiveMQConnectionFactory</em></a>
+instead of <a href="http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html" target="_blank">PooledConnectionFactory</a>. Although our
+application was functioning, large volume of asynchronous messages created overhead around socket maintenance on server what we don&rsquo;t need. After replacing our code to use
+PooledConnectionFactory, we loaded the application into our test environment to confirm the affect.</p>
+
+<p>ActiveMQConnectionFactory (old):</p>
+
+<ul>
+<li>24 ESTABLISHED connections to the broker</li>
+<li>~150 TIME_WAIT sockets after the initial startup burst of ~1000</li>
+</ul>
 
 
-</article>
+<p>PooledConnectionFactory (new):</p>
+
+<ul>
+<li>6 ESTABLISHED connections to the broker</li>
+<li>0 TIME_WAIT sockets</li>
+</ul>
 
 
+<p>We managed to reproduce this 100% in our test environment, and deploying the new code into production had not affected our throughput either.</p>
 
-<article>
-  
-<h1><a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a></h1>
-<time datetime="2013-05-12T09:42:09+02:00" pubdate><span class='month'>May</span> <span class='day'>12</span> <span class='year'>2013</span></time>
+<p><img src="/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
-
-
-</article>
-
+<p>Camel, which uses Spring JMS underneath benefits from pooling aware JMS ConnectionFactory such as PooledConnectionFactory hence it is always recommended.</p>
 </div>
 
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-06-04T23:25:27+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:25 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/" data-via="" data-counturl="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/script-clone-saltstack-formulas-github/" title="Previous Post: Script to Clone SaltStack Formulas from GitHub">&laquo; Script to Clone SaltStack Formulas from GitHub</a>
+      
+      
+        <a class="basic-alignment right" href="/running-pylint-in-pycharm/" title="Next Post: Running Pylint in PyCharm">Running Pylint in PyCharm &raquo;</a>
+      
+    </p>
+  </footer>
 </article>
 
 </div>

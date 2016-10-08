@@ -1,0 +1,508 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Merging Pillars in SaltStack - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Merging Pillars in SaltStack is supported but somewhat limited. In this post, I reveal a technique to utilise Jinja2 templating for pillar &hellip;">
+  <meta name="keywords" content="merge,salt,pillar,saltstack">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/merging-pillars-in-saltstack/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Merging Pillars in SaltStack</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-16T23:26:41+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:26 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
+time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
+
+<!--more-->
+
+
+<h2>Merging Pillars in SaltStack</h2>
+
+<p>I wrote a reasonably complex formula to manage our DNS (bind9) servers including zone files. As a common approach, I decided to use Pillar for configuration to make the formula
+generic and reusable.</p>
+
+<p>My formula required the following Pillar data (YAML):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">user</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">root</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">group</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">named</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">mode</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">640</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">custom</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">allow-query</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">127.0.0.1</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.0/24</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">allow-transfer</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">127.0.0.1</span>
+</span><span class='line'>        <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.0/24</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">recursion</span><span class="p-Indicator">:</span> <span class="s">&quot;yes&quot;</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">zone-statistics</span><span class="p-Indicator">:</span> <span class="s">&quot;yes&quot;</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">transfer-format</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">many-answers</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">interface-interval</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">0</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">zones</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">domain.com</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">master</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">file</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">domain.com.hosts</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">also-notify</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.1</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.2</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">soa</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ttl</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">43200 ; 12 hours</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">email</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">hostmaster.domain.com.</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">refresh</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">10800 ; 3h refresh</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">retry</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">3600 ; 1h retry</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">expire</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">604800 ; 1w expire</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">minimum</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">10800 ; 3h minimum</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">ns</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns1.domain.com.</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns6.otherdomain.net.</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">ns7.other.sub.domain.org.</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">sub.domain.org</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">slave</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">file</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">slaves/sub.domain.org.hosts</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">masters</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.1</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">192.168.1.2</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">sub.domain.net</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">type</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">forward</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">forward</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">only</span>
+</span><span class='line'>        <span class="l-Scalar-Plain">forwarders</span><span class="p-Indicator">:</span>
+</span><span class='line'>          <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">172.16.1.1</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To reuse my formula, I needed slightly different pillar for each DNS server but I wanted to reuse existing details to avoid duplication and pollution hence I ended up splitting
+the pillar into few files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/srv/salt/pillar/base/bind/named.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-master.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-slave.sls
+</span><span class='line'>/srv/salt/pillar/base/bind/zones-other.sls
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This allows the use or import of the <code>named.sls</code> (core config) for every server and depending on &ldquo;role&rdquo; even additional zones as required:</p>
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/named.sls:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">config</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">custom</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/zones-master.sls:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">bind</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="l-Scalar-Plain">zones</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="l-Scalar-Plain">domain.com</span><span class="p-Indicator">:</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span><span class='line'>      <span class="l-Scalar-Plain">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First, I tried adding <code>init.sls</code> with the "include" statement:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">include</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.named</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- if grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;master&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-master</span>
+</span><span class='line'>  <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-other</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- endif %</span><span class="p-Indicator">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This did not work as expected, actually it overrides either the first subkey of the <code>named.sls</code> (custom) or the zone file (zone) depending on which gets read first during compile.</p>
+
+<p>I could have used the <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">include statement with the nesting </a>but it only works if I restructure
+the zone files and remove nesting from the bind key as well as include one zone.</p>
+
+<p>One option was to move this logic into the <code>top.sls</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">base</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="s">&#39;roles:dns&#39;</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">match</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">grain</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.named</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind.zones-master</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This worked perfectly, my pillars were merged exactly the I way I wanted. However, I did not want to move a messy if-else logic there to target master/slave servers differently.
+Adding the if-else logic to the zone files looked not so ideal, changing the grain structure for better targeting seemed also just &ldquo;too much&rdquo; for what I needed to accomplish.</p>
+
+<h4>Template Engine to the Rescue</h4>
+
+<p>My solution was hiding <a href="http://salt.readthedocs.org/en/latest/ref/renderers/all/salt.renderers.jinja.html" target="_blank">here</a>, I just had to compose the recipe
+myself. This method can be used in state files as well giving you the much needed power of code reuse.</p>
+
+<figure class='code'><figcaption><span>/srv/salt/pillar/base/bind/init.sls</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/named.sls&#39; as named with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-master.sls&#39; as masters with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-slave.sls&#39; as slaves with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- import_yaml &#39;bind/zones-other.sls&#39; as others with context -%</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- if grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;master&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.update(masters.bind) %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- elif grains</span><span class="p-Indicator">[</span><span class="s">&#39;dnsrole&#39;</span><span class="p-Indicator">]</span> <span class="nv">== &#39;slave&#39; %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.update(slaves.bind) %</span><span class="p-Indicator">}</span>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- endif %</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{</span><span class="err">%</span><span class="nv">- do named.bind.zones.update(others.bind.zones) %</span><span class="p-Indicator">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p-Indicator">{{</span> <span class="nv">named</span> <span class="p-Indicator">}}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This imports all YAML files, compiles them as dictionaries and basically makes them available as objects by the given name. Then we just use the power of Jijna2 and carry out
+a dictionary update on specific objects from a specific nested key. To me it is readable, centralised and keeps the control inside the bind pillar, yet giving the power of flexibility.</p>
+
+<p>Minion targeting is now easy, keeping the <code>top.sls</code> clean and readable as possible:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">base</span><span class="p-Indicator">:</span>
+</span><span class='line'>  <span class="s">&#39;roles:dns&#39;</span><span class="p-Indicator">:</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">match</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">grain</span>
+</span><span class='line'>    <span class="p-Indicator">-</span> <span class="l-Scalar-Plain">bind</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-08-16T23:26:41+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:26 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/python/'>python</a>, <a class='category' href='/blog/categories/saltstack/'>saltstack</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/merging-pillars-in-saltstack/" data-via="" data-counturl="http://variia.github.io/merging-pillars-in-saltstack/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/wd-mycloud-2t-nas-review/" title="Previous Post: WD MyCloud 2T NAS Review">&laquo; WD MyCloud 2T NAS Review</a>
+      
+      
+        <a class="basic-alignment right" href="/solving-openvpn-poor-throughput-and-packet-loss/" title="Next Post: Solving OpenVPN poor throughput and packet loss">Solving OpenVPN poor throughput and packet loss &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

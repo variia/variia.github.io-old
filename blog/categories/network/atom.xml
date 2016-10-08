@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Network | Ivan Vari]]></title>
+  <link href="http://variia.github.io/blog/categories/network/atom.xml" rel="self"/>
+  <link href="http://variia.github.io/"/>
+  <updated>2016-10-08T06:12:43+02:00</updated>
+  <id>http://variia.github.io/</id>
+  <author>
+    <name><![CDATA[Ivan Vari]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>
+    <link href="http://variia.github.io/conditional-snat-with-irule-on-f5/"/>
+    <updated>2015-09-14T23:03:35+02:00</updated>
+    <id>http://variia.github.io/conditional-snat-with-irule-on-f5</id>
+    <content type="html"><![CDATA[<p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
+
+<p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
+services such as Google, Amazon, Akamai, etc serve requests based on their source but occasionally they get it wrong so I needed a way to control what netblock my request
+is addressed out of.</p>
+
+<!--more-->
+
+
+<p>Furthermore, some of our services require one-to-one IP mappings so I had to come up with a solution that solves the following:</p>
+
+<ul>
+<li>check if the destination address is on the target list</li>
+<li>check if the source of the request has one-to-one mapping for outgoing IP</li>
+<li>if it does and the destination is on our target list then rewrite the address to the matched map</li>
+<li>if it does not have one-to-one map and the the destination is on our target list then rewrite the address to the <em>default</em> NAT address</li>
+<li>otherwise do nothing, send packet out with its original source address</li>
+</ul>
+
+
+<pre><code class="tcl Data group for destination targets">
+ltm data-group internal snat_for_destination {
+    records {
+        8.8.8.8/32 {
+            data googledns
+        }
+    }
+    type ip
+}
+</code></pre>
+
+<p>What matters here is the key (IP), the value (googledns) is just a comment although you can use it in logging statement if you want.</p>
+
+<pre><code class="tcl Data group for one-to-one mapping">ltm data-group internal snat_dmz_to_wan_map {
+    records {
+        1.2.3.4/32 {
+            data 4.3.2.1
+        }
+    }
+    type ip
+}
+</code></pre>
+
+<pre><code class="tcl iRule">
+ltm rule snat_dmz_to_wan_map {
+    when CLIENT_ACCEPTED {
+    # https://devcentral.f5.com/wiki/iRules.class.ashx?lc=1
+    # check IF the request's destination IP is in given match list
+    if { [class match [IP::local_addr] equals snat_for_destination]} {
+        # pick IP based 1-to-1 SNAT mapping for connecting client from given list
+        if { [class match [IP::client_addr] equals snat_dmz_to_wan_map]} {
+            # set variable for matched address object
+            set snat_addr [class match -value [IP::client_addr] equals snat_dmz_to_wan_map]
+            log local0. "Connection from [IP::client_addr] to [IP::local_addr] rewrite as $snat_addr \[iSNAT\]"
+            snat $snat_addr
+        } else {
+            # on failed map lookup, default to F5's floating address
+            log local0. "Connection from [IP::client_addr] to [IP::local_addr] automap as 5.6.7.8 \[iSNAT\]"
+            snat automap
+        }
+    } else {
+        forward
+    }
+}
+</code></pre>
+
+<p>Now, the only thing we need to do is to add this resource to the required Virtual Server object.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
+    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <updated>2015-06-06T14:27:29+02:00</updated>
+    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
+
+<p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
+to pump few hundred Gigs across every day and fast. After about 20 minutes or so, everything started to slow down for an unknown reason.</p>
+
+<!--more-->
+
+
+<p>Our choice for VPN solution was OpenVPN due to some limitations caused by the managed network at the german side, so we built the tunnel and managed to get a reasonable link
+with ~20ms TTL, initial throughput tests showed:</p>
+
+<pre><code class="bash">[ 4] 0.0-30.1 sec 170 MBytes 47.5 Mbits/sec
+</code></pre>
+
+<p>It was not so flash but I did not suspect anything at that point, I accepted it as the capability of the tunnel. Further investigation however revealed TX packet drops on the
+tunnel interface:</p>
+
+<pre><code class="bash">tun1 Link encap:UNSPEC HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+ inet addr:10.0.0.129 P-t-P:10.0.0.130 Mask:255.255.255.255
+ UP POINTOPOINT RUNNING NOARP MULTICAST MTU:1500 Metric:1
+ RX packets:7409196373 errors:0 dropped:0 overruns:0 frame:0
+ TX packets:6084526548 errors:0 dropped:2642021 overruns:0 carrier:0
+ collisions:0 txqueuelen:100
+ RX bytes:941878733670 (877.1 GiB) TX bytes:3395805058712 (3.0 TiB)
+</code></pre>
+
+<p>It seemed that the tunnel is not being able to keep up with the amount of traffic it received. After some reading, it turned out, that OpenVPN sets
+<a href="http://en.wikipedia.org/wiki/Ifconfig" target="_blank">txqueuelen</a> parameter to 100 as default for the tunnel interfaces on both, client and server. It is essentially
+a buffer, and managed by the network scheduler.</p>
+
+<p>The solution was to set this to 1000, identical to the physical interface configurations:</p>
+
+<pre><code class="bash">$ grep txqueuelen /etc/openvpn/server-udp.conf
+txqueuelen 1000
+</code></pre>
+
+<p>After restarting OpenVPN on both, server and client side, there was no packet drop on the tunnel interfaces and the throughput was better too:</p>
+
+<pre><code class="bash">[  4]  0.0-30.3 sec   267 MBytes  73.9 Mbits/sec
+</code></pre>
+
+<p>For further optimisation, visit the official <a href="https://community.openvpn.net/openvpn/wiki/Gigabit_Networks_Linux" target="_blank">Linux guide</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Load Balancing and Sticky Sessions by URL Parameter]]></title>
+    <link href="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/"/>
+    <updated>2014-07-29T18:45:02+02:00</updated>
+    <id>http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter</id>
+    <content type="html"><![CDATA[<p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
+that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
+
+<p>This task was relatively easy with <a href="http://nginx.org" target="_blank">NGINX</a>, our preferred HTTP server however lately, I had to come up with a solution for
+<a href="http://www.apache.org" target="_blank">apache</a> 2.2 which was not as straight forward.</p>
+
+<!--more-->
+
+
+<h2>Load Balancing and Sticky Sessions by URL Parameter</h2>
+
+<p>apache maintains one of the best online documentation for most of its versions so finding a solution to my problem was not hard at all. However,
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html#example" target="_blank">most solutions are based on cookies</a> what I could not use. The issue with
+cookies is that I have limited control over them, there is no guarantee that the user has cookies enabled, or it will be saved not to mention that cookies can become corrupted too.</p>
+
+<p>The other issue with cookie based load balancing is that once you have one set, you always ended up on the same backend server even when you make your <em>first request</em>.
+Our requirement was that for initial calls, we want randomly allocated backend then for subsequent calls we want the user to be handled by the same server what handled the
+first call.</p>
+
+<p>Sticky sessions with URL parameter is supported by apache&rsquo;s mod_proxy:</p>
+
+<p><em>The second way of implementing stickyness is URL encoding. The web server searches for a query parameter in the URL of the request. The name of the parameter is specified
+again using stickysession. The value of the parameter is used to lookup a member worker with route equal to that value.</em></p>
+
+<p>For some reason, I had mixed results, over all it seemed unreliable hence I had to come up with my own solution based on mod_rewrite:</p>
+
+<pre><code class="apache">RewriteLog logs/virtualhost_rewrite.log
+RewriteLogLevel 2
+RewriteEngine On
+RewriteCond %{QUERY_STRING} (myparam=myvalue1)
+RewriteRule (.*) http://lb-node1.domain.com:8080%{REQUEST_URI} [P,L]
+RewriteCond %{QUERY_STRING} (myparam=myvalue2)
+RewriteRule (.*) http://lb-node2.domain.com:8080%{REQUEST_URI} [P,L]
+
+ProxyErrorOverride On
+
+&lt;Proxy balancer://loadbalancer&gt;
+    BalancerMember http://lb-node1.domain.com:8080
+    BalancerMember http://lb-node2.domain.com:8080
+&lt;/Proxy&gt;
+
+ProxyPass / balancer://loadbalancer/
+ProxyPassReverse / http://lb-node1.domain.com:8080/
+ProxyPassReverse / http://lb-node2.domain.com:8080/
+</code></pre>
+
+<p>Important to point out, that mod_rewrite rules are evaluated first before any other settings or rules and this behaviour is critical for this functionality.</p>
+
+<p>We basically check the incoming URL and if we a have match on our URL parameter, we pass the request handling to mod_proxy without evaluating any other rules. Our URL parameters
+are always unique and set by the backend servers so we need as much rewrite rules as backed servers we have.</p>
+
+<p>The <code>&lt;Proxy&gt;</code> directive sets up a standard load balancer, this ensures that initial request can be load balanced evenly between all member servers. The <code>ProxyPassReverse</code>
+directives ensure that we correctly pass redirects back to the clients&hellip;</p>
+
+<p>The only issue with this setup is that, if one of the application servers become unreachable, the clients will receive 502 (bad gateway) if they have URL parameter set.</p>
+
+<p>NGINX is much easier to set up, and since it monitors the backend servers, it can proxy traffic to other available backend servers regardless of the URL parameter being set or not.</p>
+
+<pre><code class="nginx">upstream lb-pool {
+    server lb-node1.domain.com:8080;
+    server lb-node2.domain.com:8080;
+}
+
+upstream node1 {
+    server lb-node1.domain.com:8080;
+    server lb-node2.domain.com:8080 backup;
+}
+
+upstream node2 {
+    server lb-node1.domain.com:8080 backup;
+    server lb-node2.domain.com:8080;
+}
+
+server {
+    listen 80;
+    location / {
+        proxy_cache off;
+        proxy_pass_header off;
+        proxy_set_header Host $http_host;
+
+        if ($arg_myparam = "myvalue1") {
+            proxy_pass http://node1;
+            break;
+        }
+
+        if ($arg_myparam = "myvalue2") {
+            proxy_pass http://node2;
+            break;
+        }
+
+        proxy_pass http://lb-pool;
+}
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>

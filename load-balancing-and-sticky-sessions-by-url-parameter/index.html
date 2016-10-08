@@ -1,0 +1,408 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Load Balancing and Sticky Sessions by URL Parameter - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Choose your poison, apache or nginx. Cost effective way of reverse proxying, load balancing and sticky sessions by URL parameters for testing.">
+  <meta name="keywords" content="apache,nginx,reverse proxy,load balance">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Load Balancing and Sticky Sessions by URL Parameter</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-29T18:45:02+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:45 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
+that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
+
+<p>This task was relatively easy with <a href="http://nginx.org" target="_blank">NGINX</a>, our preferred HTTP server however lately, I had to come up with a solution for
+<a href="http://www.apache.org" target="_blank">apache</a> 2.2 which was not as straight forward.</p>
+
+<!--more-->
+
+
+<h2>Load Balancing and Sticky Sessions by URL Parameter</h2>
+
+<p>apache maintains one of the best online documentation for most of its versions so finding a solution to my problem was not hard at all. However,
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html#example" target="_blank">most solutions are based on cookies</a> what I could not use. The issue with
+cookies is that I have limited control over them, there is no guarantee that the user has cookies enabled, or it will be saved not to mention that cookies can become corrupted too.</p>
+
+<p>The other issue with cookie based load balancing is that once you have one set, you always ended up on the same backend server even when you make your <em>first request</em>.
+Our requirement was that for initial calls, we want randomly allocated backend then for subsequent calls we want the user to be handled by the same server what handled the
+first call.</p>
+
+<p>Sticky sessions with URL parameter is supported by apache&rsquo;s mod_proxy:</p>
+
+<p><em>The second way of implementing stickyness is URL encoding. The web server searches for a query parameter in the URL of the request. The name of the parameter is specified
+again using stickysession. The value of the parameter is used to lookup a member worker with route equal to that value.</em></p>
+
+<p>For some reason, I had mixed results, over all it seemed unreliable hence I had to come up with my own solution based on mod_rewrite:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='apache'><span class='line'><span class="nb">RewriteLog</span> logs/virtualhost_rewrite.log
+</span><span class='line'><span class="nb">RewriteLogLevel</span> <span class="m">2</span>
+</span><span class='line'><span class="nb">RewriteEngine</span> <span class="k">On</span>
+</span><span class='line'><span class="nb">RewriteCond</span> %{QUERY_STRING} (myparam=myvalue1)
+</span><span class='line'><span class="nb">RewriteRule</span> (.*) http://lb-node1.domain.com:8080%{REQUEST_URI} [P,L]
+</span><span class='line'><span class="nb">RewriteCond</span> %{QUERY_STRING} (myparam=myvalue2)
+</span><span class='line'><span class="nb">RewriteRule</span> (.*) http://lb-node2.domain.com:8080%{REQUEST_URI} [P,L]
+</span><span class='line'>
+</span><span class='line'><span class="nb">ProxyErrorOverride</span> <span class="k">On</span>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;Proxy</span> <span class="s">balancer://loadbalancer</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nb">BalancerMember</span> http://lb-node1.domain.com:8080
+</span><span class='line'>    <span class="nb">BalancerMember</span> http://lb-node2.domain.com:8080
+</span><span class='line'><span class="nt">&lt;/Proxy&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">ProxyPass</span> / balancer://loadbalancer/
+</span><span class='line'><span class="nb">ProxyPassReverse</span> / http://lb-node1.domain.com:8080/
+</span><span class='line'><span class="nb">ProxyPassReverse</span> / http://lb-node2.domain.com:8080/
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Important to point out, that mod_rewrite rules are evaluated first before any other settings or rules and this behaviour is critical for this functionality.</p>
+
+<p>We basically check the incoming URL and if we a have match on our URL parameter, we pass the request handling to mod_proxy without evaluating any other rules. Our URL parameters
+are always unique and set by the backend servers so we need as much rewrite rules as backed servers we have.</p>
+
+<p>The <code>&lt;Proxy&gt;</code> directive sets up a standard load balancer, this ensures that initial request can be load balanced evenly between all member servers. The <code>ProxyPassReverse</code>
+directives ensure that we correctly pass redirects back to the clients&hellip;</p>
+
+<p>The only issue with this setup is that, if one of the application servers become unreachable, the clients will receive 502 (bad gateway) if they have URL parameter set.</p>
+
+<p>NGINX is much easier to set up, and since it monitors the backend servers, it can proxy traffic to other available backend servers regardless of the URL parameter being set or not.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='nginx'><span class='line'><span class="k">upstream</span> <span class="s">lb-pool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">upstream</span> <span class="s">node1</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span> <span class="s">backup</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">upstream</span> <span class="s">node2</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node1.domain.com</span><span class="p">:</span><span class="mi">8080</span> <span class="s">backup</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">server</span> <span class="n">lb-node2.domain.com</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">server</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+</span><span class='line'>    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kn">proxy_cache</span> <span class="no">off</span><span class="p">;</span>
+</span><span class='line'>        <span class="kn">proxy_pass_header</span> <span class="no">off</span><span class="p">;</span>
+</span><span class='line'>        <span class="kn">proxy_set_header</span> <span class="s">Host</span> <span class="nv">$http_host</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">if</span> <span class="s">(</span><span class="nv">$arg_myparam</span> <span class="p">=</span> <span class="s">&quot;myvalue1&quot;)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kn">proxy_pass</span> <span class="s">http://node1</span><span class="p">;</span>
+</span><span class='line'>            <span class="kn">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">if</span> <span class="s">(</span><span class="nv">$arg_myparam</span> <span class="p">=</span> <span class="s">&quot;myvalue2&quot;)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kn">proxy_pass</span> <span class="s">http://node2</span><span class="p">;</span>
+</span><span class='line'>            <span class="kn">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kn">proxy_pass</span> <span class="s">http://lb-pool</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-07-29T18:45:02+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:45 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/network/'>network</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/" data-via="" data-counturl="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/dashlane-vs-1password/" title="Previous Post: Dashlane vs 1Password">&laquo; Dashlane vs 1Password</a>
+      
+      
+        <a class="basic-alignment right" href="/wd-mycloud-2t-nas-review/" title="Next Post: WD MyCloud 2T NAS Review">WD MyCloud 2T NAS Review &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

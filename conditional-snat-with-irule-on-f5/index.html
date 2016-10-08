@@ -1,0 +1,363 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Conditional SNAT With iRule on F5 - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.">
+  <meta name="keywords" content="f5,irule,conditional,snat">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/conditional-snat-with-irule-on-f5/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Conditional SNAT With iRule on F5</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-14T23:03:35+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>14</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>11:03 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
+
+<p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
+services such as Google, Amazon, Akamai, etc serve requests based on their source but occasionally they get it wrong so I needed a way to control what netblock my request
+is addressed out of.</p>
+
+<!--more-->
+
+
+<p>Furthermore, some of our services require one-to-one IP mappings so I had to come up with a solution that solves the following:</p>
+
+<ul>
+<li>check if the destination address is on the target list</li>
+<li>check if the source of the request has one-to-one mapping for outgoing IP</li>
+<li>if it does and the destination is on our target list then rewrite the address to the matched map</li>
+<li>if it does not have one-to-one map and the the destination is on our target list then rewrite the address to the <em>default</em> NAT address</li>
+<li>otherwise do nothing, send packet out with its original source address</li>
+</ul>
+
+
+<figure class='code'><figcaption><span>Data group for destination targets</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> data-group internal snat_for_destination <span class="k">{</span>
+</span><span class='line'>    <span class="nv">records</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">8.8.8.8</span><span class="o">/</span><span class="mi">32</span> <span class="k">{</span>
+</span><span class='line'>            <span class="nv">data</span> googledns
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'>    <span class="nv">type</span> ip
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What matters here is the key (IP), the value (googledns) is just a comment although you can use it in logging statement if you want.</p>
+
+<figure class='code'><figcaption><span>Data group for one-to-one mapping</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> data-group internal snat_dmz_to_wan_map <span class="k">{</span>
+</span><span class='line'>    <span class="nv">records</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">1.2.3.4</span><span class="o">/</span><span class="mi">32</span> <span class="k">{</span>
+</span><span class='line'>            <span class="nv">data</span> <span class="mf">4.3</span>.2.1
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'>    <span class="nv">type</span> ip
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>iRule</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='tcl'><span class='line'><span class="nv">ltm</span> rule snat_dmz_to_wan_map <span class="k">{</span>
+</span><span class='line'>    <span class="nv">when</span> CLIENT_ACCEPTED <span class="k">{</span>
+</span><span class='line'>    <span class="c"># https://devcentral.f5.com/wiki/iRules.class.ashx?lc=1</span>
+</span><span class='line'>    <span class="c"># check IF the request&#39;s destination IP is in given match list</span>
+</span><span class='line'>    <span class="k">if</span> <span class="k">{</span> <span class="k">[</span><span class="nv">class</span> match <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>local_addr<span class="k">]</span> equals snat_for_destination<span class="k">]}</span> <span class="k">{</span>
+</span><span class='line'>        <span class="c"># pick IP based 1-to-1 SNAT mapping for connecting client from given list</span>
+</span><span class='line'>        <span class="k">if</span> <span class="k">{</span> <span class="k">[</span><span class="nv">class</span> match <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>client_addr<span class="k">]</span> equals snat_dmz_to_wan_map<span class="k">]}</span> <span class="k">{</span>
+</span><span class='line'>            <span class="c"># set variable for matched address object</span>
+</span><span class='line'>            <span class="k">set</span> snat_addr <span class="k">[</span><span class="nv">class</span> match <span class="o">-</span>value <span class="k">[</span><span class="nv">IP</span><span class="o">::</span>client_addr<span class="k">]</span> equals snat_dmz_to_wan_map<span class="k">]</span>
+</span><span class='line'>            <span class="nv">log</span> local0. <span class="s2">&quot;Connection from [IP::client_addr] to [IP::local_addr] rewrite as $snat_addr \[iSNAT\]&quot;</span>
+</span><span class='line'>            <span class="nv">snat</span> <span class="nv">$snat_addr</span>
+</span><span class='line'>        <span class="k">}</span> <span class="k">else</span> <span class="k">{</span>
+</span><span class='line'>            <span class="c"># on failed map lookup, default to F5&#39;s floating address</span>
+</span><span class='line'>            <span class="nv">log</span> local0. <span class="s2">&quot;Connection from [IP::client_addr] to [IP::local_addr] automap as 5.6.7.8 \[iSNAT\]&quot;</span>
+</span><span class='line'>            <span class="nv">snat</span> automap
+</span><span class='line'>        <span class="k">}</span>
+</span><span class='line'>    <span class="k">}</span> <span class="k">else</span> <span class="k">{</span>
+</span><span class='line'>        <span class="nv">forward</span>
+</span><span class='line'>    <span class="k">}</span>
+</span><span class='line'><span class="k">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, the only thing we need to do is to add this resource to the required Virtual Server object.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-09-14T23:03:35+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>14</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>11:03 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/network/'>network</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/conditional-snat-with-irule-on-f5/" data-via="" data-counturl="http://variia.github.io/conditional-snat-with-irule-on-f5/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/solving-openvpn-poor-throughput-and-packet-loss/" title="Previous Post: Solving OpenVPN poor throughput and packet loss">&laquo; Solving OpenVPN poor throughput and packet loss</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

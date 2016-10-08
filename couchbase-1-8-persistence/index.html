@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Couchbase 1.8 Persistence - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="Couchbase 1.8 supports two types of buckets but the memcached bucket is limited, does not
+support persistence, failover so this article is about the  &hellip;">
+  <meta name="keywords" content="couchbase,disk,fragmentation,persistence,maintenance">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/couchbase-1-8-persistence/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Couchbase 1.8 Persistence</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-05-21T13:34:53+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>1:34 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the <em>memcached</em> bucket is limited, does not
+support persistence, failover so this article is about the <em>couchbase</em> bucket type and its maintenance.</p>
+
+<p>We tend to forget the fact, that this bucket is persisted so every single key is saved to disk. This means you have a copy in memory (assume your
+resident ratio is 100%) and on disk. Depending on your cluster setup, you will likely to have at least another copy in another node&rsquo;s memory
+and its disk. (4 copies altogether)</p>
+
+<!--more-->
+
+
+<p>With the added metadata overhead, it&rsquo;s fair to say that you actually need more disk space on each node than memory, to be able to fully utilise your
+node&rsquo;s memory and you have to consider this when you size your hardware. Couchbase 2.x requires even more disk-space (2 x your RAM) per node due to
+the JSON indexes and changed persistence layer.</p>
+
+<h2>Update</h2>
+
+<p>Note: the behavior/technique explained here only true up to a certain size, aka vacuum is only practical for smaller databases. For large databases
+(10G+ per file), it&rsquo;s much more efficient to fail over the node then add it back to the cluster followed by rebalance.</p>
+
+<h2>The Keys</h2>
+
+<p>Depending on what you use a <em>key-value</em> store for, it&rsquo;s fairly common, that the data you store changes frequently and how long it will remain in your
+bucket depends on the expiry you set on creation.</p>
+
+<p><em>You have to nail the expiry to prevent bloating the store or deleting important dataset too early</em></p>
+
+<p>We started loading one of our high performance buckets and set the expiry initially to 30 days. Unfortunately we didn&rsquo;t realize at that point, that we
+get more data from web visitors, than we delete (by expiry) so our bucket got bloated with approximately 500 - 600 Million keys. (39G in memory, 45G on
+disk per node) This pushed our resident ratio down to 24% approximately, which was not really an issue until we started actually fetching data for our
+testing.</p>
+
+<h2>The Cleanup</h2>
+
+<p>We could have raised the bucket quota since we had free RAM, but we knew the bucket was bloated with stale data, so the only option we had was to clean
+it up. We set the expiry immediately in our code to 7 days, but it only affected newly created keys so we had to wait 4 weeks before we actually saw
+our store reducing in size.</p>
+
+<p><img src="/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
+
+<p>Our bucket <strong>started reducing</strong> in size around January <strong>but only in memory</strong>, the green area representing the disk usage remained the same.</p>
+
+<p>By early February we reached our target size, but our disk was still bloated and it had to be claimed back, although it was not as simple as you may think.</p>
+
+<h2>SQL Fragmentation</h2>
+
+<p>Couchbase 1.8 uses SQLite3 to persist the data, it comes with the product installer package. The <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a>
+(login required) from the support portal explains this very well although in real life scenario, I believe there is a little more to it.</p>
+
+<h2>The not so easy way</h2>
+
+<p>Make sure you have <em>auto-failover</em> set, remove the node to be cleaned followed by <em>rebalance</em>. When finished add the node back to the cluster and complete <em>rebalance</em> again.
+When you initiate the <em>rebalance</em> operation the entire Couchbase data area on your disk is deleted, keys and metadata will be synced across all live nodes.</p>
+
+<p><em>In production, even off peak, this is a very heavy operation</em></p>
+
+<p><strong>Every node</strong> will be hitting the disk hard, CPU usage will increase, response times and latency will be poor. One node took approximately 2 x 20 minutes,
+on our small 4 node cluster it&rsquo;s 160 minutes and it&rsquo;s best case scenario. When fully utilized, this could go up as high as 12 hours just to clean our 4 node
+cluster and it&rsquo;s worth to mention that we have the fastest SSD available.
+The final important aspect of this method is that rebalance fails sometimes, there is a lot going on and it&rsquo;s somewhat <em>normal</em> according to 
+<a href="http://blog.couchbase.com/top-10-things-ops-sys-admin-must-know-about-couchbase" target="_blank">another article</a>. When it does you have to start
+the <em>rebalance</em> all over again, and it could go on for some time until you get all your nodes cleaned. This is something we could not afford, it&rsquo;s just not
+feasible for 24/7 operations.</p>
+
+<h2>Manual fragmentation</h2>
+
+<p>The idea is that you essentially make the data unavailable on a single node until the <em>VACUUM</em> runs then you just suck the data back into memory from the
+de-fragmented store. Yes, your active-replica will not be activated and in our case (4 node cluster) 25% of our data will not be accessible at all but for us
+it is better than having uselessly slow 100% while <em>rebalance</em> is running.</p>
+
+<p>This requires <em>auto failover</em> to be turned off, you can do it by a simple API call:</p>
+
+<figure class='code'><figcaption><span>in disable failover:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>curl <span class="s2">&quot;http://localhost:8091/settings/autoFailover&quot;</span> -i -u Administrator:<span class="s2">&quot;yourpassword&quot;</span> -d <span class="s1">&#39;enabled=false&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>followed by shutting the <em>coushbase-server</em> process down. When your server process is stopped, you can then <em>VACUUM</em> the database files individually as explained
+in the <a href="http://support.couchbase.com/entries/21724787-Understanding-SQLite-fragmentation-and-Vacuuming-of-databases" target="_blank">knowledgebase</a> article.</p>
+
+<h2>The surprise</h2>
+
+<p>It may fail with the following error:</p>
+
+<p><code>Error: disk I/O error</code></p>
+
+<p>After some reading and digging, we found that SQLite3 makes a copy of your database on the fly to <code>/var/tmp</code> then runs the VACUUM over the temporary copy, on success
+it copies the de-fragmented database back to its place. Our database files were ~35-40GB each and as much as we pay attention to partitioning when we build servers,
+we did not count that into our sizing. Not to mention that <code>/var/tmp</code> was not on SSD storage so the VACUUM was slow too, hence we ended up with the following fix for
+our disk layout:</p>
+
+<figure class='code'><figcaption><span>mount:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/dev/sdb1 on /opt <span class="nb">type </span>ext4 <span class="o">(</span>rw,noatime,data<span class="o">=</span>writeback,commit<span class="o">=</span>120<span class="o">)</span>
+</span><span class='line'>/opt/temp on /var/tmp <span class="nb">type </span>none <span class="o">(</span>rw,bind<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Couchbase lives under <code>/opt</code> default so we mounted our fast SSD disk (sdb) there during installation, thus we just added some performance tuning options to our EXT4
+file system.</p>
+
+<p>Then we created a temporary folder at <code>/opt/temp</code> and mounted <code>/var/tmp</code> to it. This way we got enough space to complete the database <em>VACUUM</em> and we moved this high
+IO operation to our fastest drive available.</p>
+
+<p>At completion, start the server process and <a href="http://www.couchbase.com/docs/couchbase-manual-1.8/couchbase-monitoring-startup.html" target="_blank">monitor</a>
+the warmup. This method was not only faster, but leaves 75% of our data intact and fast not to mention that we do not have to risk wasting time on <em>rebalance</em> failures.
+At last but not least re-enable your <em>auto failover</em> when all of your nodes are done:</p>
+
+<figure class='code'><figcaption><span>enable failover:</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>curl <span class="s2">&quot;http://localhost:8091/settings/autoFailover&quot;</span> -i -u Administrator:<span class="s2">&quot;yourpassword&quot;</span> -d <span class="s1">&#39;enabled=true&amp;timeout=30&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2013-05-21T13:34:53+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>1:34 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/couchbase-1-8-persistence/" data-via="" data-counturl="http://variia.github.io/couchbase-1-8-persistence/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/hands-on-with-couchbase/" title="Previous Post: Hands-on with Couchbase">&laquo; Hands-on with Couchbase</a>
+      
+      
+        <a class="basic-alignment right" href="/couchbase-quota-explained/" title="Next Post: Couchbase Quota Explained">Couchbase Quota Explained &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -9,8 +9,7 @@
   <meta name="author" content="Ivan Vari">
 
   
-  <meta name="description" content="It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
-Couchbase is now our &hellip;">
+  <meta name="description" content="Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions. We have 2 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -32,6 +31,7 @@ Couchbase is now our &hellip;">
 <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
 <!--Fonts-Awesome Web font directory for aside icons -->
 <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
@@ -76,6 +76,7 @@ Couchbase is now our &hellip;">
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
 </ul>
 
 </nav>
@@ -89,7 +90,7 @@ Couchbase is now our &hellip;">
       
   <header>
     
-      <h1 class="entry-title"><a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a></h1>
+      <h1 class="entry-title"><a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a></h1>
     
     
       <p class="meta">
@@ -98,37 +99,382 @@ Couchbase is now our &hellip;">
 
 
 
-<time class='entry-date' datetime='2013-05-12T09:42:09+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>9:42 am</span></time>
+<time class='entry-date' datetime='2015-09-14T23:03:35+02:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>14</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>11:03 pm</span></time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
-<a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
-and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
-challenges.</p>
+  <div class="entry-content"><p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
 
-<h2>Background</h2>
-
-<p>We work in the online advertising market and for today&rsquo;s internet user speed is everything. Therefor, latency is paramount in
-our application design thus, we needed something fast to store various user information including targeting data.
-Few years ago, the choice was <a href="http://www.project-voldemort.com" target="_blank">Voldemort</a> for its latency and
-speed, but unfortunately the product was not only vulnerable to cluster changes and disasters, but also was featuring small
-user group so support was difficult. <code>memcached</code> always looked promising but the lack of clustering and disk persistence was
-<em>too expensive</em> for our production suite.</p>
-
-<p>Then Couchbase (membase with persistance backend) came along which was pretty new on the market, was going through couple of
-re-brandings in a short period but it used <code>memcached</code> under the hood along with seamless clustering, auto-recovery and disk
-persistence. Sounds like a dream? Well it was, but we had to wake up quickly in the middle of our migration because it was
-just not going the way we wanted to.</p>
+<p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
+services such as Google, Amazon, Akamai, etc serve requests based on their source but occasionally they get it wrong so I needed a way to control what netblock my request
+is addressed out of.</p>
 
 </div>
   
   
     <footer>
-      <a rel="full-article" href="/hands-on-with-couchbase/">Read on &rarr;</a>
+      <a rel="full-article" href="/conditional-snat-with-irule-on-f5/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-06T14:27:29+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>2:27 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
+
+<p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
+to pump few hundred Gigs across every day and fast. After about 20 minutes or so, everything started to slow down for an unknown reason.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/solving-openvpn-poor-throughput-and-packet-loss/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-16T23:26:41+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:26 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
+time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/merging-pillars-in-saltstack/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-04T00:38:52+02:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:38 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I purchased a <a href="http://www.seagate.com/external-hard-drives/home-entertainment/media-sharing-devices/seagate-central" target="_blank">Seagate Central</a> 2T NAS 5 months
+ago, for a low cost home media center solution. It worked reasonably well considering the low ~US130 cost although, I had ongoing issues with firmware updates, occasional drive
+performance, etc. Unfortunately, it failed last week and while I was looking for alternatives, I learnt that I was not the only one having problems with that device so I simply
+lost trust in Seagate forever.</p>
+
+<p>I returned the drive, and the store offered me the <a href="http://www.wdc.com/mycloud/" target="_blank">WD MyCloud</a> 2T as a replacement alternative without extra cost what
+I happily accepted.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/wd-mycloud-2t-nas-review/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-29T18:45:02+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:45 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
+that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
+
+<p>This task was relatively easy with <a href="http://nginx.org" target="_blank">NGINX</a>, our preferred HTTP server however lately, I had to come up with a solution for
+<a href="http://www.apache.org" target="_blank">apache</a> 2.2 which was not as straight forward.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/load-balancing-and-sticky-sessions-by-url-parameter/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/dashlane-vs-1password/">Dashlane vs 1Password</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-17T00:33:29+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:33 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
+for years and happy with it except a couple of things:</p>
+
+<ul>
+<li>written in .NET so cross platform integration has its challenges</li>
+<li>browser integration</li>
+</ul>
+
+
+<p>Although the browser integration is reasonably good now on Windows, it&rsquo;s not as <em>refined</em> as its commercial competitors such as <a href="https://www.dashlane.com" target="_blank">Dashlane </a> or
+<a href="https://agilebits.com/onepassword" target="_blank">1Password</a>. So I decided to investigate these utilities to see if they can convince me to switch.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/dashlane-vs-1password/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/running-pylint-in-pycharm/">Running Pylint in PyCharm</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-03T00:41:28+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:41 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
+<a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports
+<a href="http://legacy.python.org/dev/peps/pep-0008/" target="_blank">PEP8 </a>auditing &ldquo;out of the box&rdquo;, but I found out lately, that it is a little &ldquo;loose&rdquo; on style
+compared to pylint. Running pylint in pycharm didn&rsquo;t seem to be supported in any ways so I became curious about how I could add this functionality to my favourite IDE.</p>
+
+<p>After some searching, I realised that there is not much out there about this topic. I could not accept it and went after the challenge&hellip;</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/running-pylint-in-pycharm/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/solving-camel-activemq-clients-in-tcp-time_wait/">Solving Camel ActiveMQ Clients in TCP TIME_WAIT</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-06-04T23:25:27+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>11:25 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>We are an agile software development company and agile is great for &ldquo;moving target&rdquo;. We plan, work and implement changes in small batches and ongoing re-factoring is just
+the nature of what we do.</p>
+
+<p>We recently added some functionality as well as increased traffic for one of our Java products utilising <a href="http://camel.apache.org" target="_blank">Apache Camel</a>
+and <a href="http://activemq.apache.org" target="_blank">ActiveMQ</a>. The product has been in production for years now, functioning with very much zero defect rate. Not soon
+after deploying the new code, our monitoring system triggered alerts about unusually high TCP TIME_WAIT connection states on the server where the new code was running. We
+began the troubleshooting process and found they were all ActiveMQ connections to our broker. Our developers immediately confirmed that</p>
+
+<p>&ldquo;<em>there was no change on the ActiveMQ connection manager side.</em>&rdquo;</p>
+
+<p>Well, it turned out that it was exactly the problem.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/solving-camel-activemq-clients-in-tcp-time_wait/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/script-clone-saltstack-formulas-github/">Script to Clone SaltStack Formulas From GitHub</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-05-23T19:44:01+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>7:44 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
+formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
+and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may
+need in the near future so why not clone all of them and ensure I have a local copy of them for my development.</p>
+
+<p>The pages have been updated fairly regularly, more and more people contributing now to the project, which is great however it started to become tedious to find new formulas
+and I needed an automated solution to keep up to date with the changes.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/script-clone-saltstack-formulas-github/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/integrating-networks-vpn-amazon-vpc/">Integrating Networks Over VPN With Amazon VPC</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-05-19T00:21:58+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:21 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
+This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
+should your resource requirements increase and so forth.</p>
+
+<p>This guide is going to be technical, intended for experienced professionals where I will be discussing options and solutions to securely integrate your onsite
+(private) LANs with Amazon VPC. It is based on OpenVPN client running on an instance inside VPC, connecting to my remote branch firewall running pfSense 2.1.3
+and OpenVPN server. The point-to-point tunnel between the client / server is 2-way, both the client and the server expose their local networks and route traffic
+to the other side accordingly. But first, let&rsquo;s take a look at what other option we have.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/integrating-networks-vpn-amazon-vpc/">Read on &rarr;</a>
     </footer>
   
 
@@ -136,6 +482,8 @@ just not going the way we wanted to.</p>
     </article>
   
   <div class="pagination">
+    
+      <a class="prev" href="/posts/2">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -167,18 +515,34 @@ just not going the way we wanted to.</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a>
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
       </li>
     
   </ul>
 </section>
 <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/blog/categories/clustering/'>clustering (1)</a></li><li><a href='/blog/categories/database/'>database (1)</a></li></ul>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(1)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(1)</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
 </section>
 
   
@@ -187,12 +551,25 @@ just not going the way we wanted to.</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2016 - Ivan Vari -
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
 </footer>
   
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
 
 
 

@@ -32,6 +32,7 @@ Couchbase is now our &hellip;">
 <link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
 <link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
 <!--Fonts-Awesome Web font directory for aside icons -->
 <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
@@ -76,6 +77,7 @@ Couchbase is now our &hellip;">
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
 </ul>
 
 </nav>
@@ -107,6 +109,9 @@ Couchbase is now our &hellip;">
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
 challenges.</p>
 
+<!--more-->
+
+
 <h2>Background</h2>
 
 <p>We work in the online advertising market and for today&rsquo;s internet user speed is everything. Therefor, latency is paramount in
@@ -120,9 +125,6 @@ user group so support was difficult. <code>memcached</code> always looked promis
 re-brandings in a short period but it used <code>memcached</code> under the hood along with seamless clustering, auto-recovery and disk
 persistence. Sounds like a dream? Well it was, but we had to wake up quickly in the middle of our migration because it was
 just not going the way we wanted to.</p>
-
-<!--more-->
-
 
 <h2>The Cluster</h2>
 
@@ -363,6 +365,8 @@ improve bucket sharding, reduce network generated interrupts.</p>
     <p class="meta">
       
       
+        <a class="basic-alignment right" href="/couchbase-1-8-persistence/" title="Next Post: Couchbase 1.8 Persistence">Couchbase 1.8 Persistence &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -395,18 +399,34 @@ improve bucket sharding, reduce network generated interrupts.</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a>
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
       </li>
     
   </ul>
 </section>
 <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/blog/categories/clustering/'>clustering (1)</a></li><li><a href='/blog/categories/database/'>database (1)</a></li></ul>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(1)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(1)</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
 </section>
 
   
@@ -416,12 +436,25 @@ improve bucket sharding, reduce network generated interrupts.</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2016 - Ivan Vari -
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
 </footer>
   
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
 
 
 

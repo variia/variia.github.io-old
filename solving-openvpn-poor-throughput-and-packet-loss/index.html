@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: Database - Ivan Vari</title>
+  <title>Solving OpenVPN Poor Throughput and Packet Loss - Ivan Vari</title>
   <meta name="author" content="Ivan Vari">
 
   
-  <meta name="description" content="Category: database">
-  
+  <meta name="description" content="This guide is about solving OpenVPN poor throughput and packet loss between two data centers and based on Couchbase XDCR experience.">
+  <meta name="keywords" content="openvpn,slow,throughput,solved">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://variia.github.io/blog/categories/database/">
+  <link rel="canonical" href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
@@ -83,63 +83,128 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">Category: Database</h1>
+    
+      <h1 class="entry-title">Solving OpenVPN Poor Throughput and Packet Loss</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-06T14:27:29+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>2:27 pm</span></time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+<div class="entry-content"><p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
 
-  
-  <h2>2013</h2>
+<p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
+to pump few hundred Gigs across every day and fast. After about 20 minutes or so, everything started to slow down for an unknown reason.</p>
 
-<article>
-  
-<h1><a href="/couchbase-quota-explained/">Couchbase Quota Explained</a></h1>
-<time datetime="2013-10-16T00:28:13+02:00" pubdate><span class='month'>Oct</span> <span class='day'>16</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
+<!--more-->
 
 
-</article>
+<p>Our choice for VPN solution was OpenVPN due to some limitations caused by the managed network at the german side, so we built the tunnel and managed to get a reasonable link
+with ~20ms TTL, initial throughput tests showed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span> 4<span class="o">]</span> 0.0-30.1 sec <span class="m">170</span> MBytes 47.5 Mbits/sec
+</span></code></pre></td></tr></table></div></figure>
 
 
+<p>It was not so flash but I did not suspect anything at that point, I accepted it as the capability of the tunnel. Further investigation however revealed TX packet drops on the
+tunnel interface:</p>
 
-<article>
-  
-<h1><a href="/couchbase-1-8-persistence/">Couchbase 1.8 Persistence</a></h1>
-<time datetime="2013-05-21T13:34:53+02:00" pubdate><span class='month'>May</span> <span class='day'>21</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
-
-
-</article>
-
-
-
-<article>
-  
-<h1><a href="/hands-on-with-couchbase/">Hands-on With Couchbase</a></h1>
-<time datetime="2013-05-12T09:42:09+02:00" pubdate><span class='month'>May</span> <span class='day'>12</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a></span>
-</footer>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>tun1 Link encap:UNSPEC HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+</span><span class='line'> inet addr:10.0.0.129 P-t-P:10.0.0.130 Mask:255.255.255.255
+</span><span class='line'> UP POINTOPOINT RUNNING NOARP MULTICAST MTU:1500 Metric:1
+</span><span class='line'> RX packets:7409196373 errors:0 dropped:0 overruns:0 frame:0
+</span><span class='line'> TX packets:6084526548 errors:0 dropped:2642021 overruns:0 carrier:0
+</span><span class='line'> collisions:0 txqueuelen:100
+</span><span class='line'> RX bytes:941878733670 <span class="o">(</span>877.1 GiB<span class="o">)</span> TX bytes:3395805058712 <span class="o">(</span>3.0 TiB<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
 
 
-</article>
+<p>It seemed that the tunnel is not being able to keep up with the amount of traffic it received. After some reading, it turned out, that OpenVPN sets
+<a href="http://en.wikipedia.org/wiki/Ifconfig" target="_blank">txqueuelen</a> parameter to 100 as default for the tunnel interfaces on both, client and server. It is essentially
+a buffer, and managed by the network scheduler.</p>
 
+<p>The solution was to set this to 1000, identical to the physical interface configurations:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>grep txqueuelen /etc/openvpn/server-udp.conf
+</span><span class='line'>txqueuelen 1000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After restarting OpenVPN on both, server and client side, there was no packet drop on the tunnel interfaces and the throughput was better too:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span>  4<span class="o">]</span>  0.0-30.3 sec   <span class="m">267</span> MBytes  73.9 Mbits/sec
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For further optimisation, visit the official <a href="https://community.openvpn.net/openvpn/wiki/Gigabit_Networks_Linux" target="_blank">Linux guide</a>.</p>
 </div>
 
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-06-06T14:27:29+02:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>2:27 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/network/'>network</a>, <a class='category' href='/blog/categories/security/'>security</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/" data-via="" data-counturl="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/merging-pillars-in-saltstack/" title="Previous Post: Merging Pillars in SaltStack">&laquo; Merging Pillars in SaltStack</a>
+      
+      
+        <a class="basic-alignment right" href="/conditional-snat-with-irule-on-f5/" title="Next Post: Conditional SNAT with iRule on F5">Conditional SNAT with iRule on F5 &raquo;</a>
+      
+    </p>
+  </footer>
 </article>
 
 </div>

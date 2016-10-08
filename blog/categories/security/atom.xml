@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Security | Ivan Vari]]></title>
+  <link href="http://variia.github.io/blog/categories/security/atom.xml" rel="self"/>
+  <link href="http://variia.github.io/"/>
+  <updated>2016-10-08T06:12:43+02:00</updated>
+  <id>http://variia.github.io/</id>
+  <author>
+    <name><![CDATA[Ivan Vari]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
+    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <updated>2015-06-06T14:27:29+02:00</updated>
+    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
+
+<p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
+to pump few hundred Gigs across every day and fast. After about 20 minutes or so, everything started to slow down for an unknown reason.</p>
+
+<!--more-->
+
+
+<p>Our choice for VPN solution was OpenVPN due to some limitations caused by the managed network at the german side, so we built the tunnel and managed to get a reasonable link
+with ~20ms TTL, initial throughput tests showed:</p>
+
+<pre><code class="bash">[ 4] 0.0-30.1 sec 170 MBytes 47.5 Mbits/sec
+</code></pre>
+
+<p>It was not so flash but I did not suspect anything at that point, I accepted it as the capability of the tunnel. Further investigation however revealed TX packet drops on the
+tunnel interface:</p>
+
+<pre><code class="bash">tun1 Link encap:UNSPEC HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
+ inet addr:10.0.0.129 P-t-P:10.0.0.130 Mask:255.255.255.255
+ UP POINTOPOINT RUNNING NOARP MULTICAST MTU:1500 Metric:1
+ RX packets:7409196373 errors:0 dropped:0 overruns:0 frame:0
+ TX packets:6084526548 errors:0 dropped:2642021 overruns:0 carrier:0
+ collisions:0 txqueuelen:100
+ RX bytes:941878733670 (877.1 GiB) TX bytes:3395805058712 (3.0 TiB)
+</code></pre>
+
+<p>It seemed that the tunnel is not being able to keep up with the amount of traffic it received. After some reading, it turned out, that OpenVPN sets
+<a href="http://en.wikipedia.org/wiki/Ifconfig" target="_blank">txqueuelen</a> parameter to 100 as default for the tunnel interfaces on both, client and server. It is essentially
+a buffer, and managed by the network scheduler.</p>
+
+<p>The solution was to set this to 1000, identical to the physical interface configurations:</p>
+
+<pre><code class="bash">$ grep txqueuelen /etc/openvpn/server-udp.conf
+txqueuelen 1000
+</code></pre>
+
+<p>After restarting OpenVPN on both, server and client side, there was no packet drop on the tunnel interfaces and the throughput was better too:</p>
+
+<pre><code class="bash">[  4]  0.0-30.3 sec   267 MBytes  73.9 Mbits/sec
+</code></pre>
+
+<p>For further optimisation, visit the official <a href="https://community.openvpn.net/openvpn/wiki/Gigabit_Networks_Linux" target="_blank">Linux guide</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Dashlane vs 1Password]]></title>
+    <link href="http://variia.github.io/dashlane-vs-1password/"/>
+    <updated>2014-07-17T00:33:29+02:00</updated>
+    <id>http://variia.github.io/dashlane-vs-1password</id>
+    <content type="html"><![CDATA[<p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
+for years and happy with it except a couple of things:</p>
+
+<ul>
+<li>written in .NET so cross platform integration has its challenges</li>
+<li>browser integration</li>
+</ul>
+
+
+<p>Although the browser integration is reasonably good now on Windows, it&rsquo;s not as <em>refined</em> as its commercial competitors such as <a href="https://www.dashlane.com" target="_blank">Dashlane </a> or
+<a href="https://agilebits.com/onepassword" target="_blank">1Password</a>. So I decided to investigate these utilities to see if they can convince me to switch.</p>
+
+<!--more-->
+
+
+<h2>Update - July 28th, 2014:</h2>
+
+<p>I have to admit, that most of my concerns around 1Password were related to the earlier Windows version. Since my evaluation,
+<a href="http://blog.agilebits.com/2014/06/17/1password-4-for-windows-is-here/" target="_blank">1Password 4 was made available for Windows</a> and looks, feels, behaves exactly
+like on OSX.</p>
+
+<p>I am very happy to say that, I made the switch and I am a satisfied 1Password customer ever since. In the end, I decided not to look at cost when it comes to security,
+and <a href="http://blog.agilebits.com/2014/07/16/1password-is-a-very-safe-basket/" target="_blank">it seems that I made the right decision.</a></p>
+
+<h2>Dashlane vs 1Password</h2>
+
+<p>I didn&rsquo;t want to go into detail and compare the core or advanced features of these apps, you can find elsewhere. My goal was to find something more convenient and easier to
+use than KeePass but keeping the balance between security, functionality and convenience.</p>
+
+<p>It was also important to me how <em>trusted</em> the vendor is, what kind of reputation they may have and how easy it is to get my data, should they disappear from the market.</p>
+
+<p>This is purely my gut feeling / opinion and based on my quick and dirty trial based on versions available at this time of writing. I looked at how they compare to my current
+software KeePass regarding functionality, security, design, look / feel and above all, how easy the transition would be.</p>
+
+<h4>Dashlane pros:</h4>
+
+<ul>
+<li>offline or online: you only have to be online while register an account, it does not affect working with an already created local database if you choose not to pay or
+turn off cloud sync</li>
+<li>secure: 2 factor authentication supported</li>
+<li>clean interface: identical look / feel on both Windows and OSX</li>
+<li>security and authorisation: even if you just want to create a brand new local valet (without cloud sync) on a &ldquo;new&rdquo; device, it needs to be &ldquo;approved&rdquo; with an online
+code sent to the registered email. Dashlane essentially tracks the devices associated with an account regardless you sync to the cloud or not.</li>
+<li>browser integration: seamless plugin install and integration during setup</li>
+<li>auto login: no need to click (most websites) on submit button ever again. If you happen to have multiple accounts for a single site you will have an &ldquo;drop down&rdquo; list to
+select from.</li>
+<li>export: csv and its own encrypted .dash format</li>
+<li>cost: subscription based, annual fee then you can sync your valet to unlimited number of devices including mobile</li>
+<li>support: good although over email a bit slow</li>
+<li>security dashboard: gives you warnings about reused passwords, compromised accounts, etc.</li>
+</ul>
+
+
+<h4>Dashlane cons:</h4>
+
+<ul>
+<li>icon view: I hated it, I don&rsquo;t need a thumbnail to identify an account, no detailed &ldquo;list like&rdquo; view. To see any details about any accounts, I had to click on them individually</li>
+<li>no copy item: I had to fill new entry for few similar items even if 2 fields changed only</li>
+<li>the interface: designed for web accounts only, not so useful for example PIN numbers where there is no username, it simply won&rsquo;t save without username field filled</li>
+<li>import mismatch: The account name and access URLs are really important for autofill, although I had some websites in the valet after import, on visit I got the popup
+offering account creation which indicated failed match against my valet stored entry</li>
+<li>idle lock only: no option to lock on screen lock, etc. although it&rsquo;s not so much of a concern for an average user</li>
+<li>import: KeePass import is Windows only, although works sort of well</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>main window: over-engineered, password &ldquo;categories&rdquo; does not help to organise accounts. Over 100+ accounts this view becomes overwhelming and confusing</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+<li>security: I didn&rsquo;t like the idea of having the ability to log into their website and browse my password valet (paid only)</li>
+<li>logo: I just cannot personally associate &ldquo;antiloop&rdquo; with password management</li>
+</ul>
+
+
+<h4>1Password pros:</h4>
+
+<ul>
+<li>offline or online: no built in cloud sync option, Google Drive, iCloud, Dropbox, WiFi or just local valet, it&rsquo;s your choice</li>
+<li>design: love the application on OSX, similar to KeePass, easy to see details, password strength, etc. in a &ldquo;detailed like&rdquo; list view</li>
+<li>main window: collapsible folder options, excellent organisation and tags, really nice looking interface</li>
+<li>import: KeePass import allows &ldquo;field&rdquo; selection from the CSV export to mach 1Password fields which comes handy for complex entries</li>
+<li>security: <a href="http://blog.agilebits.com/2013/03/06/you-have-secrets-we-dont-why-our-data-format-is-public/" target="_blank">openly published security design</a></li>
+<li>trusted: stable software from vendor with good reputation</li>
+<li>support: great support and community forums</li>
+<li>export: csv, text or its own .pif format</li>
+<li>shared vault: could be very handy between family members</li>
+<li>security audit: reports weak passwords, old or duplicated entries, etc.</li>
+</ul>
+
+
+<h4>1Password cons:</h4>
+
+<ul>
+<li>overpriced: no subscription and copies need to be purchased for multiple devices, mobile is also extra</li>
+<li>Windows version: may be identical functionality wise but looks / feels totally different to OSX. Ugly, clumsy and suggest very early development.</li>
+<li>browser plugins: install is not part of the setup, needs to be done manually for each browser from various sources and it&rsquo;s convoluted / confusing especially on Windows</li>
+<li>no auto login: no auto field population either, even a simple browser does that. I don&rsquo;t know why I have to hit "CMD+\&ldquo; key combination to be able to populate fields and
+log in automatically.</li>
+<li>no virtual keyboard: just some extra protection against key-loggers although not so much of a concern</li>
+<li>no 2 factor authentication: and <a href="http://blog.agilebits.com/2011/09/23/two-factor-or-not-two-factor/" target="_blank">it&rsquo;s not even planned</a></li>
+<li>browser plugins based on &ldquo;websockets&rdquo; and it can break things or requires specific settings on some platforms , Windows especially</li>
+<li>apache authentication: incapable of filling / recognising apache like authentication popups</li>
+</ul>
+
+
+<h4>Verdict</h4>
+
+<p>No clear winner for me, decided to keep using KeePass until something better comes along. The big shock for me was the apache server authentication, neither of them could handle
+those popups so I was left with &ldquo;cut n' paste&rdquo; or &ldquo;save in the browser&rdquo;, which was a big deal as I have a lot of those.</p>
+
+<p>I liked Dashlane (2.4.1) but it needs refinement, something that 1Password (4.4.1) has on OSX but it is very pricey and I don&rsquo;t think it&rsquo;s justified compared to some of the missing
+features/ annoying bits. I also need at least Windows and OSX support, which is done well from Dashlane but 1Password is very much beta on Windows and I am not even sure, on
+what grounds they can charge money for it.</p>
+
+<p>I have not evaluated <a href="https://www.lastpass.com" target="_blank">Lastpass</a> yet, at this stage I simply
+<a href="http://arstechnica.com/security/2014/07/severe-password-manager-attacks-steal-digital-keys-and-data-en-masse/" target="_blank">do not trust that product</a> and their security practices.</p>
+]]></content>
+  </entry>
+  
+</feed>

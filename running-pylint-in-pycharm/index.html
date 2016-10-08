@@ -1,0 +1,324 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Running Pylint in PyCharm - Ivan Vari</title>
+  <meta name="author" content="Ivan Vari">
+
+  
+  <meta name="description" content="I liked the seamless Pylint integration in Eclipse/Pydev and after I switched permanently to PyCharm, I was curious how I could run pylint in pycharm.">
+  <meta name="keywords" content="pylint,pychram,plugin">
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://variia.github.io/running-pylint-in-pycharm/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Fjalla+One" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Anton" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=Voltaire" rel="stylesheet" type="text/css">
+<!--Fonts-Awesome Web font directory for aside icons -->
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" />
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-84719456-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Ivan Vari</a></h1>
+  
+    <h2>Head in the Cloud, Feet on the Ground</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="variia.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Running Pylint in PyCharm</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-07-03T00:41:28+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:41 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
+<a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports
+<a href="http://legacy.python.org/dev/peps/pep-0008/" target="_blank">PEP8 </a>auditing &ldquo;out of the box&rdquo;, but I found out lately, that it is a little &ldquo;loose&rdquo; on style
+compared to pylint. Running pylint in pycharm didn&rsquo;t seem to be supported in any ways so I became curious about how I could add this functionality to my favourite IDE.</p>
+
+<p>After some searching, I realised that there is not much out there about this topic. I could not accept it and went after the challenge&hellip;</p>
+
+<!--more-->
+
+
+<h2>Running Pylint in PyCharm</h2>
+
+<p>As it turned out, it is much simpler than I initially thought. First install pylint, it&rsquo;s very easy, there are various ways of doing it depending on operating system, your
+preference, etc. so the installation is out of the scope of this guide.</p>
+
+<h4>Create an external tool:</h4>
+
+<p><img src="/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
+
+<p>My pylint config is fairly simple, nearly stock standard so I simply added my customisation to the &ldquo;parameters&rdquo; line, but for more complex setups, I strongly recommend setting
+up <code>.pylintrc</code> in your HOME then adding your config file to the parameter line as an argument. This basically pipes your code through pylint and displays the results in the &ldquo;run&rdquo;
+console.</p>
+
+<h4>Configure output filter:</h4>
+
+<p><img src="/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
+
+<p>These will create an XML config that looks like this on OSX:</p>
+
+<figure class='code'><figcaption><span>$ less Library/Preferences/PyCharm4.0/tools/CodeCompliance.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;toolSet</span> <span class="na">name=</span><span class="s">&quot;CodeCompliance&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tool</span> <span class="na">name=</span><span class="s">&quot;Pylint&quot;</span> <span class="na">description=</span><span class="s">&quot;External module to integrate pylint compliance checks into PyCharm&quot;</span> <span class="na">showInMainMenu=</span><span class="s">&quot;true&quot;</span> <span class="na">showInEditor=</span><span class="s">&quot;true&quot;</span> <span class="na">showInProject=</span><span class="s">&quot;true&quot;</span> <span class="na">showInSearchPopup=</span><span class="s">&quot;true&quot;</span> <span class="na">disabled=</span><span class="s">&quot;false&quot;</span> <span class="na">useConsole=</span><span class="s">&quot;true&quot;</span> <span class="na">showConsoleOnStdOut=</span><span class="s">&quot;false&quot;</span> <span class="na">showConsoleOnStdErr=</span><span class="s">&quot;false&quot;</span> <span class="na">synchronizeAfterRun=</span><span class="s">&quot;true&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;exec&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;COMMAND&quot;</span> <span class="na">value=</span><span class="s">&quot;pylint&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;PARAMETERS&quot;</span> <span class="na">value=</span><span class="s">&quot;--disable=W0106,W0212 --max-line-length=120 --msg-template=&amp;quot;$FileDir$/{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}&amp;quot; $FilePath$&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;WORKING_DIRECTORY&quot;</span> <span class="na">value=</span><span class="s">&quot;$FileDir$&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/exec&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;filter&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;NAME&quot;</span> <span class="na">value=</span><span class="s">&quot;ErrorMessages&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;DESCRIPTION&quot;</span> <span class="na">value=</span><span class="s">&quot;Creates jump links to non-compliant lines&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;option</span> <span class="na">name=</span><span class="s">&quot;REGEXP&quot;</span> <span class="na">value=</span><span class="s">&quot;$FILE_PATH$\:$LINE$\:&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/filter&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tool&gt;</span>
+</span><span class='line'><span class="nt">&lt;/toolSet&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As the description says, this will essentially give you quick <em>jump links</em> to the parts of your code where the non-compliant code is.</p>
+
+<p><img src="/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
+
+<p>Clicking on any of the blue lines will simply navigate you to the line where the issue is, and adding <em>keymap</em> to this tool can improve your workflow too.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-07-03T00:41:28+02:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:41 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/python/'>python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://variia.github.io/running-pylint-in-pycharm/" data-via="" data-counturl="http://variia.github.io/running-pylint-in-pycharm/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/solving-camel-activemq-clients-in-tcp-time_wait/" title="Previous Post: Solving Camel ActiveMQ Clients in TCP TIME_WAIT">&laquo; Solving Camel ActiveMQ Clients in TCP TIME_WAIT</a>
+      
+      
+        <a class="basic-alignment right" href="/dashlane-vs-1password/" title="Next Post: Dashlane vs 1Password">Dashlane vs 1Password &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section id="aside-icons">
+<span class="fa-stack fa-lg">
+  <a href="mailto:webmaster@ivanvari.com">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-envelope fa-stack-1x fa-inverse "></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://github.com/variia">
+    <i class="fa fa-github fa-stack-2x"></i>
+  </a>
+</span>
+<span class="fa-stack fa-lg">
+  <a href="https://www.linkedin.com/profile/view?id=ADEAAAZ6wwEBp7FjAqg_m7ZK8y148UI70Cyn9n8">
+    <i class="fa fa-circle fa-stack-2x "></i>
+    <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+  </a>
+</span>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
+      </li>
+    
+      <li class="post">
+        <a href="/solving-openvpn-poor-throughput-and-packet-loss/">Solving OpenVPN Poor Throughput and Packet Loss</a>
+      </li>
+    
+      <li class="post">
+        <a href="/merging-pillars-in-saltstack/">Merging Pillars in SaltStack</a>
+      </li>
+    
+      <li class="post">
+        <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - 2016 - Ivan Vari -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'ivanvari-com';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
