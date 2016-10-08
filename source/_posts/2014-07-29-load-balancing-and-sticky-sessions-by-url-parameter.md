@@ -12,6 +12,9 @@ tags:
   - apache
   - nginx
   - proxy
+comments: true
+sharing: true
+footer: true
 ---
 To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
 that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.

@@ -12,6 +12,9 @@ tags:
   - activemq
   - camel
   - java
+comments: true
+sharing: true
+footer: true
 ---
 We are an agile software development company and agile is great for "moving target". We plan, work and implement changes in small batches and ongoing re-factoring is just
 the nature of what we do.

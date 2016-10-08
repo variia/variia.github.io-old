@@ -13,6 +13,9 @@ tags:
   - python
   - salt
   - scripting
+comments: true
+sharing: true
+footer: true
 ---
 I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
 formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,

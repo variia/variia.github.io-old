@@ -12,6 +12,9 @@ tags:
   - hardware
   - nas
   - wd
+comments: true
+sharing: true
+footer: true
 ---
 I purchased a <a href="http://www.seagate.com/external-hard-drives/home-entertainment/media-sharing-devices/seagate-central" target="_blank">Seagate Central</a> 2T NAS 5 months
 ago, for a low cost home media center solution. It worked reasonably well considering the low ~US130 cost although, I had ongoing issues with firmware updates, occasional drive

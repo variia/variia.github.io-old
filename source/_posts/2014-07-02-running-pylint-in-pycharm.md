@@ -11,6 +11,9 @@ categories:
 tags:
   - ide
   - python
+comments: true
+sharing: true
+footer: true
 ---
 I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
 <a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports

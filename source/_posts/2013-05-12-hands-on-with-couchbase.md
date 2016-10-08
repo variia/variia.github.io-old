@@ -13,6 +13,9 @@ tags:
   - cluster
   - couchbase
   - nosql
+comments: true
+sharing: true
+footer: true
 ---
 It's been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production

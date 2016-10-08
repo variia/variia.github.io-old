@@ -11,6 +11,9 @@ categories:
 tags:
   - password
   - security
+comments: true
+sharing: true
+footer: true
 ---
 I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
 for years and happy with it except a couple of things:

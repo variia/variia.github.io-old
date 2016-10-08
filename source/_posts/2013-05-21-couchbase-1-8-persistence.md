@@ -13,6 +13,9 @@ tags:
   - cluster
   - couchbase
   - nosql
+comments: true
+sharing: true
+footer: true
 ---
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the _memcached_ bucket is limited, does not
 support persistence, failover so this article is about the _couchbase_ bucket type and its maintenance.

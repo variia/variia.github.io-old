@@ -13,6 +13,9 @@ tags:
   - cluster
   - couchbase
   - nosql
+comments: true
+sharing: true
+footer: true
 ---
 For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
 we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,

@@ -13,6 +13,9 @@ tags:
   - network
   - openvpn
   - security
+comments: true
+sharing: true
+footer: true
 ---
 This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.
 

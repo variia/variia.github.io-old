@@ -14,6 +14,9 @@ tags:
   - cloud
   - vpc
   - ec2
+comments: true
+sharing: true
+footer: true
 ---
 <a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
 This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,

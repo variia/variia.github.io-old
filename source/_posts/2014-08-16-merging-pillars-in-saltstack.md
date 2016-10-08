@@ -12,6 +12,9 @@ categories:
 tags:
   - python
   - salt
+comments: true
+sharing: true
+footer: true
 ---
 Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
 time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.
