@@ -19,6 +19,8 @@ It's been a long a long time coming, hard work has finally paid off and the last
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
 challenges.
 
+<!--more-->
+
 ## Background
 
 We work in the online advertising market and for today's internet user speed is everything. Therefor, latency is paramount in
@@ -32,8 +34,6 @@ Then Couchbase (membase with persistance backend) came along which was pretty n
 re-brandings in a short period but it used `memcached` under the hood along with seamless clustering, auto-recovery and disk
 persistence. Sounds like a dream? Well it was, but we had to wake up quickly in the middle of our migration because it was
 just not going the way we wanted to.
-
-<!--more-->
 
 ## The Cluster
 
