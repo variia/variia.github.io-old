@@ -2,12 +2,13 @@
 #      Main Configs       #
 # ----------------------- #
 
-url: http://variia.github.io
+url: https://ivanvari.com
+enforce_ssl: ivanvari.com
 title: Ivan Vari
-subtitle: Head in the Cloud, Feet on the Ground
+subtitle: A minimalist Sysop/Devops Craftsman
 author: Ivan Vari
 simple_search: https://www.google.com/search
-description: Head in the Cloud, Feet on the Ground
+description: A minimalist Sysop/Devops Craftsman
 
 # Default date format is "ordinal" (resulting in "July 22nd 2007")
 # You can customize the format as defined in
