@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Saltstack | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/saltstack/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/saltstack/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Merging Pillars in SaltStack]]></title>
-    <link href="http://variia.github.io/merging-pillars-in-saltstack/"/>
+    <link href="https://ivanvari.com/merging-pillars-in-saltstack/"/>
     <updated>2014-08-16T23:26:41+02:00</updated>
-    <id>http://variia.github.io/merging-pillars-in-saltstack</id>
+    <id>https://ivanvari.com/merging-pillars-in-saltstack</id>
     <content type="html"><![CDATA[<p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
 time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
 
@@ -188,9 +188,9 @@ a dictionary update on specific objects from a specific nested key. To me it is 
   
   <entry>
     <title type="html"><![CDATA[Script to Clone SaltStack Formulas From GitHub]]></title>
-    <link href="http://variia.github.io/script-clone-saltstack-formulas-github/"/>
+    <link href="https://ivanvari.com/script-clone-saltstack-formulas-github/"/>
     <updated>2014-05-23T19:44:01+02:00</updated>
-    <id>http://variia.github.io/script-clone-saltstack-formulas-github</id>
+    <id>https://ivanvari.com/script-clone-saltstack-formulas-github</id>
     <content type="html"><![CDATA[<p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
 formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
 and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may

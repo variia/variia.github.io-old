@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Network | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/network/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/network/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>
-    <link href="http://variia.github.io/conditional-snat-with-irule-on-f5/"/>
+    <link href="https://ivanvari.com/conditional-snat-with-irule-on-f5/"/>
     <updated>2015-09-14T23:03:35+02:00</updated>
-    <id>http://variia.github.io/conditional-snat-with-irule-on-f5</id>
+    <id>https://ivanvari.com/conditional-snat-with-irule-on-f5</id>
     <content type="html"><![CDATA[<p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
 
 <p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
@@ -90,9 +90,9 @@ ltm rule snat_dmz_to_wan_map {
   
   <entry>
     <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
-    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <link href="https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss/"/>
     <updated>2015-06-06T14:27:29+02:00</updated>
-    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <id>https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss</id>
     <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
 
 <p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
@@ -140,9 +140,9 @@ txqueuelen 1000
   
   <entry>
     <title type="html"><![CDATA[Load Balancing and Sticky Sessions by URL Parameter]]></title>
-    <link href="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/"/>
+    <link href="https://ivanvari.com/load-balancing-and-sticky-sessions-by-url-parameter/"/>
     <updated>2014-07-29T18:45:02+02:00</updated>
-    <id>http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter</id>
+    <id>https://ivanvari.com/load-balancing-and-sticky-sessions-by-url-parameter</id>
     <content type="html"><![CDATA[<p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
 that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
 

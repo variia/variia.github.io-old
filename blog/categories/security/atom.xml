@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Security | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/security/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/security/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
-    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <link href="https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss/"/>
     <updated>2015-06-06T14:27:29+02:00</updated>
-    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <id>https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss</id>
     <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
 
 <p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
@@ -65,9 +65,9 @@ txqueuelen 1000
   
   <entry>
     <title type="html"><![CDATA[Dashlane vs 1Password]]></title>
-    <link href="http://variia.github.io/dashlane-vs-1password/"/>
+    <link href="https://ivanvari.com/dashlane-vs-1password/"/>
     <updated>2014-07-17T00:33:29+02:00</updated>
-    <id>http://variia.github.io/dashlane-vs-1password</id>
+    <id>https://ivanvari.com/dashlane-vs-1password</id>
     <content type="html"><![CDATA[<p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
 for years and happy with it except a couple of things:</p>
 

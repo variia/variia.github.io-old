@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Java | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/java/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/java/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Solving Camel ActiveMQ Clients in TCP TIME_WAIT]]></title>
-    <link href="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/"/>
+    <link href="https://ivanvari.com/solving-camel-activemq-clients-in-tcp-time_wait/"/>
     <updated>2014-06-04T23:25:27+02:00</updated>
-    <id>http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait</id>
+    <id>https://ivanvari.com/solving-camel-activemq-clients-in-tcp-time_wait</id>
     <content type="html"><![CDATA[<p>We are an agile software development company and agile is great for &ldquo;moving target&rdquo;. We plan, work and implement changes in small batches and ongoing re-factoring is just
 the nature of what we do.</p>
 
@@ -38,7 +38,7 @@ began the troubleshooting process and found they were all ActiveMQ connections t
 <p>I started looking various aspects of our environment but was unable to pinpoint where the problem was coming from. So I shifted my focus onto our client implementation, despite
 the confirmation from the developers.</p>
 
-<p><img src="http://variia.github.io/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
 
 <p>Note: it&rsquo;s perfectly natural to have these especially on systems that deal with lots of short lived requests from client connections over unreliable public networks. In nutshell,
 the local TCP stack waits for twice the maximum segment lifetime (MSL) to pass (120 sec default) before it finishes CLOSING to be sure that the remote end-point received the
@@ -70,7 +70,7 @@ PooledConnectionFactory, we loaded the application into our test environment to
 
 <p>We managed to reproduce this 100% in our test environment, and deploying the new code into production had not affected our throughput either.</p>
 
-<p><img src="http://variia.github.io/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
 
 <p>Camel, which uses Spring JMS underneath benefits from pooling aware JMS ConnectionFactory such as PooledConnectionFactory hence it is always recommended.</p>
 ]]></content>

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Clustering | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/clustering/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/clustering/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Couchbase Quota Explained]]></title>
-    <link href="http://variia.github.io/couchbase-quota-explained/"/>
+    <link href="https://ivanvari.com/couchbase-quota-explained/"/>
     <updated>2013-10-16T00:28:13+02:00</updated>
-    <id>http://variia.github.io/couchbase-quota-explained</id>
+    <id>https://ivanvari.com/couchbase-quota-explained</id>
     <content type="html"><![CDATA[<p>For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
 we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,
 disk is used for persistence only. It turns out that in this condition your usable RAM is lot less, 2 thirds of your allocated quota.</p>
@@ -29,7 +29,7 @@ disk is used for persistence only. It turns out that in this condition your usab
 on keys, etc. So what we do is essentially oversize the buckets initially (as long as we can afford it with RAM of course), then observe and perhaps adjust it later on
 but this gets harder when you start utilising your cluster RAM.</p>
 
-<p><img src="http://variia.github.io/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
 
 <p>I had a solid understanding of the &ldquo;mem_low_wat&rdquo; and &ldquo;mem_high_wat&rdquo; watermarks, I just didn&rsquo;t know their impact and how their values are calculated.
 The <a href="http://www.couchbase.com/docs/couchbase-manual-2.0/couchbase-introduction-architecture-ejection-eviction.html" target="_blank">working set management guide</a>
@@ -63,9 +63,9 @@ If an application is not coded to handle this type of exception, writes/reads ma
   
   <entry>
     <title type="html"><![CDATA[Couchbase 1.8 Persistence]]></title>
-    <link href="http://variia.github.io/couchbase-1-8-persistence/"/>
+    <link href="https://ivanvari.com/couchbase-1-8-persistence/"/>
     <updated>2013-05-21T13:34:53+02:00</updated>
-    <id>http://variia.github.io/couchbase-1-8-persistence</id>
+    <id>https://ivanvari.com/couchbase-1-8-persistence</id>
     <content type="html"><![CDATA[<p><a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the <em>memcached</em> bucket is limited, does not
 support persistence, failover so this article is about the <em>couchbase</em> bucket type and its maintenance.</p>
 
@@ -103,7 +103,7 @@ testing.</p>
 it up. We set the expiry immediately in our code to 7 days, but it only affected newly created keys so we had to wait 4 weeks before we actually saw
 our store reducing in size.</p>
 
-<p><img src="http://variia.github.io/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
+<p><img src="https://ivanvari.com/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
 
 <p>Our bucket <strong>started reducing</strong> in size around January <strong>but only in memory</strong>, the green area representing the disk usage remained the same.</p>
 
@@ -175,9 +175,9 @@ At last but not least re-enable your <em>auto failover</em> when all of your nod
   
   <entry>
     <title type="html"><![CDATA[Hands-on With Couchbase]]></title>
-    <link href="http://variia.github.io/hands-on-with-couchbase/"/>
+    <link href="https://ivanvari.com/hands-on-with-couchbase/"/>
     <updated>2013-05-12T09:42:09+02:00</updated>
-    <id>http://variia.github.io/hands-on-with-couchbase</id>
+    <id>https://ivanvari.com/hands-on-with-couchbase</id>
     <content type="html"><![CDATA[<p>It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
@@ -288,7 +288,7 @@ threadcount=8
 
 <h2>Results and Conclusion</h2>
 
-<p>  <img src="http://variia.github.io/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
+<p>  <img src="https://ivanvari.com/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
 
 <ul>
 <li>Couchbase scaled very well during our test, we achieved <strong>400 000 GET requests / second</strong> with an average latency of <strong>400us (micro-second)</strong>, 99th = 4ms

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Ivan Vari]]></title>
-  <link href="http://variia.github.io/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>
-    <link href="http://variia.github.io/conditional-snat-with-irule-on-f5/"/>
+    <link href="https://ivanvari.com/conditional-snat-with-irule-on-f5/"/>
     <updated>2015-09-14T23:03:35+02:00</updated>
-    <id>http://variia.github.io/conditional-snat-with-irule-on-f5</id>
+    <id>https://ivanvari.com/conditional-snat-with-irule-on-f5</id>
     <content type="html"><![CDATA[<p>Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions.</p>
 
 <p>We have 2 public IP netblocks for our production network, one is geographically registered in LA, California, the other is Amsterdam, Netherlands. It is very common that
@@ -129,9 +129,9 @@ is addressed out of.</p>
   
   <entry>
     <title type="html"><![CDATA[Solving OpenVPN Poor Throughput and Packet Loss]]></title>
-    <link href="http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss/"/>
+    <link href="https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss/"/>
     <updated>2015-06-06T14:27:29+02:00</updated>
-    <id>http://variia.github.io/solving-openvpn-poor-throughput-and-packet-loss</id>
+    <id>https://ivanvari.com/solving-openvpn-poor-throughput-and-packet-loss</id>
     <content type="html"><![CDATA[<p>This not about optimising OpenVPN, it is about solving OpenVPN poor throughput and packet loss issue, where the server receives traffic faster than it actually process.</p>
 
 <p>We are currently in the process of moving data centers. This requires our Couchbase data to be in sync between Gütersloh (DE) and AMS-IX (NL) which does mean that XDCR needs
@@ -194,9 +194,9 @@ a buffer, and managed by the network scheduler.</p>
   
   <entry>
     <title type="html"><![CDATA[Merging Pillars in SaltStack]]></title>
-    <link href="http://variia.github.io/merging-pillars-in-saltstack/"/>
+    <link href="https://ivanvari.com/merging-pillars-in-saltstack/"/>
     <updated>2014-08-16T23:26:41+02:00</updated>
-    <id>http://variia.github.io/merging-pillars-in-saltstack</id>
+    <id>https://ivanvari.com/merging-pillars-in-saltstack</id>
     <content type="html"><![CDATA[<p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
 time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
 
@@ -451,9 +451,9 @@ a dictionary update on specific objects from a specific nested key. To me it is 
   
   <entry>
     <title type="html"><![CDATA[WD MyCloud 2T NAS Review]]></title>
-    <link href="http://variia.github.io/wd-mycloud-2t-nas-review/"/>
+    <link href="https://ivanvari.com/wd-mycloud-2t-nas-review/"/>
     <updated>2014-08-04T00:38:52+02:00</updated>
-    <id>http://variia.github.io/wd-mycloud-2t-nas-review</id>
+    <id>https://ivanvari.com/wd-mycloud-2t-nas-review</id>
     <content type="html"><![CDATA[<p>I purchased a <a href="http://www.seagate.com/external-hard-drives/home-entertainment/media-sharing-devices/seagate-central" target="_blank">Seagate Central</a> 2T NAS 5 months
 ago, for a low cost home media center solution. It worked reasonably well considering the low ~US130 cost although, I had ongoing issues with firmware updates, occasional drive
 performance, etc. Unfortunately, it failed last week and while I was looking for alternatives, I learnt that I was not the only one having problems with that device so I simply
@@ -496,39 +496,39 @@ cooler, it&rsquo;s more like hand warm rather than hot.</p>
 <p>The WebUI is very nice, clean and both easy to read and drive. The front page is well organised, dashboard alike but not &ldquo;too busy&rdquo; and easy to understand even for an average
 user but still giving you the option for detailed information, should you need it.</p>
 
-<p><img src="http://variia.github.io/images/2014-08/5347607A-0F91-4454-84CC-85F0DDD1F34C.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/5347607A-0F91-4454-84CC-85F0DDD1F34C.jpg" /></p>
 
 <h4>Shares:</h4>
 
-<p><img src="http://variia.github.io/images/2014-08/1781162B-5656-424A-A26C-3A9B6CCE5285.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/1781162B-5656-424A-A26C-3A9B6CCE5285.jpg" /></p>
 
 <p>Shares can have individual access settings or set public (accessible without password) as well as set to be excluded from media serving. (does NOT include exclusion from media
 scan unfortunately)</p>
 
 <h4>Notifications:</h4>
 
-<p><img src="http://variia.github.io/images/2014-08/C6ABB8A2-A36D-4CE0-A4ED-93A93A7549F3.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/C6ABB8A2-A36D-4CE0-A4ED-93A93A7549F3.jpg" /></p>
 
 <p>You can set up email notifications and their importance. It&rsquo;s not so much of a monitoring but certainly helps to keep you up to date about the events occurring on the drive
 including predictive failure, reboots, etc.</p>
 
 <h4>Settings:</h4>
 
-<p><img src="http://variia.github.io/images/2014-08/23FBE529-56A2-45DB-ACF7-58AEF7DB125F.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/23FBE529-56A2-45DB-ACF7-58AEF7DB125F.jpg" /></p>
 
 <p>Not so much of a feature, but it was great to see (after Seagate Central) that I have the ability to backup my configuration. Unfortunately, it only backs up the basics like
 network settings but it does not save some of the personal preferences such as &ldquo;Cloud Access&rdquo; settings, etc.</p>
 
 <h4>Network:</h4>
 
-<p><img src="http://variia.github.io/images/2014-08/0DEE40B5-9495-4540-B77E-AAA6D3B21887.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/0DEE40B5-9495-4540-B77E-AAA6D3B21887.jpg" /></p>
 
 <p>One of the biggest surprise (positive) for me was the fact that this device allows SSH access as well as FTP access. Furthermore, the access is root which may not be good for
 some but advanced users can really leverage this functionality especially when disaster strikes.</p>
 
 <h4>Safepoints:</h4>
 
-<p><img src="http://variia.github.io/images/2014-08/9BA06E47-3305-42D5-9581-434A0FCD6B6F.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2014-08/9BA06E47-3305-42D5-9581-434A0FCD6B6F.jpg" /></p>
 
 <p>Basically, you can set up another device and create a snapshot or mirror of your data at any given point of time. Considering the sizes available, I am not sure how feasible
 this is or how long it takes to copy 2T-4T over the cable even on Gbit network.</p>
@@ -880,9 +880,9 @@ DLNA but I don&rsquo;t want it for everything.</p>
   
   <entry>
     <title type="html"><![CDATA[Load Balancing and Sticky Sessions by URL Parameter]]></title>
-    <link href="http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter/"/>
+    <link href="https://ivanvari.com/load-balancing-and-sticky-sessions-by-url-parameter/"/>
     <updated>2014-07-29T18:45:02+02:00</updated>
-    <id>http://variia.github.io/load-balancing-and-sticky-sessions-by-url-parameter</id>
+    <id>https://ivanvari.com/load-balancing-and-sticky-sessions-by-url-parameter</id>
     <content type="html"><![CDATA[<p>To be able to mimic our production workload in testing, we had to come with a low cost solution to load balance HTTP traffic between few application servers. In addition to
 that, for the first (initial request) we required even distribution amongst the backend nodes but, subsequent requests needed to be handled by the same backend server.</p>
 
@@ -1037,9 +1037,9 @@ directives ensure that we correctly pass redirects back to the clients&hellip;</
   
   <entry>
     <title type="html"><![CDATA[Dashlane vs 1Password]]></title>
-    <link href="http://variia.github.io/dashlane-vs-1password/"/>
+    <link href="https://ivanvari.com/dashlane-vs-1password/"/>
     <updated>2014-07-17T00:33:29+02:00</updated>
-    <id>http://variia.github.io/dashlane-vs-1password</id>
+    <id>https://ivanvari.com/dashlane-vs-1password</id>
     <content type="html"><![CDATA[<p>I am a sysop / devops engineer, love open source and security so I tend to ignore commercial software. For password valet, I have been using <a href="http://keepass.info" target="_blank">KeePass </a>
 for years and happy with it except a couple of things:</p>
 
@@ -1158,9 +1158,9 @@ what grounds they can charge money for it.</p>
   
   <entry>
     <title type="html"><![CDATA[Running Pylint in PyCharm]]></title>
-    <link href="http://variia.github.io/running-pylint-in-pycharm/"/>
+    <link href="https://ivanvari.com/running-pylint-in-pycharm/"/>
     <updated>2014-07-03T00:41:28+02:00</updated>
-    <id>http://variia.github.io/running-pylint-in-pycharm</id>
+    <id>https://ivanvari.com/running-pylint-in-pycharm</id>
     <content type="html"><![CDATA[<p>I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
 <a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports
 <a href="http://legacy.python.org/dev/peps/pep-0008/" target="_blank">PEP8 </a>auditing &ldquo;out of the box&rdquo;, but I found out lately, that it is a little &ldquo;loose&rdquo; on style
@@ -1178,7 +1178,7 @@ preference, etc. so the installation is out of the scope of this guide.</p>
 
 <h4>Create an external tool:</h4>
 
-<p><img src="http://variia.github.io/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
 
 <p>My pylint config is fairly simple, nearly stock standard so I simply added my customisation to the &ldquo;parameters&rdquo; line, but for more complex setups, I strongly recommend setting
 up <code>.pylintrc</code> in your HOME then adding your config file to the parameter line as an argument. This basically pipes your code through pylint and displays the results in the &ldquo;run&rdquo;
@@ -1186,7 +1186,7 @@ console.</p>
 
 <h4>Configure output filter:</h4>
 
-<p><img src="http://variia.github.io/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
 
 <p>These will create an XML config that looks like this on OSX:</p>
 
@@ -1223,7 +1223,7 @@ console.</p>
 
 <p>As the description says, this will essentially give you quick <em>jump links</em> to the parts of your code where the non-compliant code is.</p>
 
-<p><img src="http://variia.github.io/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
 
 <p>Clicking on any of the blue lines will simply navigate you to the line where the issue is, and adding <em>keymap</em> to this tool can improve your workflow too.</p>
 ]]></content>
@@ -1231,9 +1231,9 @@ console.</p>
   
   <entry>
     <title type="html"><![CDATA[Solving Camel ActiveMQ Clients in TCP TIME_WAIT]]></title>
-    <link href="http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait/"/>
+    <link href="https://ivanvari.com/solving-camel-activemq-clients-in-tcp-time_wait/"/>
     <updated>2014-06-04T23:25:27+02:00</updated>
-    <id>http://variia.github.io/solving-camel-activemq-clients-in-tcp-time_wait</id>
+    <id>https://ivanvari.com/solving-camel-activemq-clients-in-tcp-time_wait</id>
     <content type="html"><![CDATA[<p>We are an agile software development company and agile is great for &ldquo;moving target&rdquo;. We plan, work and implement changes in small batches and ongoing re-factoring is just
 the nature of what we do.</p>
 
@@ -1254,7 +1254,7 @@ began the troubleshooting process and found they were all ActiveMQ connections t
 <p>I started looking various aspects of our environment but was unable to pinpoint where the problem was coming from. So I shifted my focus onto our client implementation, despite
 the confirmation from the developers.</p>
 
-<p><img src="http://variia.github.io/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-06/DC3DA587-A560-4F29-97E1-B814380F14DE.png" /></p>
 
 <p>Note: it&rsquo;s perfectly natural to have these especially on systems that deal with lots of short lived requests from client connections over unreliable public networks. In nutshell,
 the local TCP stack waits for twice the maximum segment lifetime (MSL) to pass (120 sec default) before it finishes CLOSING to be sure that the remote end-point received the
@@ -1286,7 +1286,7 @@ PooledConnectionFactory, we loaded the application into our test environment to
 
 <p>We managed to reproduce this 100% in our test environment, and deploying the new code into production had not affected our throughput either.</p>
 
-<p><img src="http://variia.github.io/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-06/AC3DC564-HDFG-4829-97E1-B814380K1421.png" /></p>
 
 <p>Camel, which uses Spring JMS underneath benefits from pooling aware JMS ConnectionFactory such as PooledConnectionFactory hence it is always recommended.</p>
 ]]></content>
@@ -1294,9 +1294,9 @@ PooledConnectionFactory, we loaded the application into our test environment to
   
   <entry>
     <title type="html"><![CDATA[Script to Clone SaltStack Formulas From GitHub]]></title>
-    <link href="http://variia.github.io/script-clone-saltstack-formulas-github/"/>
+    <link href="https://ivanvari.com/script-clone-saltstack-formulas-github/"/>
     <updated>2014-05-23T19:44:01+02:00</updated>
-    <id>http://variia.github.io/script-clone-saltstack-formulas-github</id>
+    <id>https://ivanvari.com/script-clone-saltstack-formulas-github</id>
     <content type="html"><![CDATA[<p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
 formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
 and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may
@@ -1519,9 +1519,9 @@ and I needed an automated solution to keep up to date with the changes.</p>
   
   <entry>
     <title type="html"><![CDATA[Integrating Networks Over VPN With Amazon VPC]]></title>
-    <link href="http://variia.github.io/integrating-networks-vpn-amazon-vpc/"/>
+    <link href="https://ivanvari.com/integrating-networks-vpn-amazon-vpc/"/>
     <updated>2014-05-19T00:21:58+02:00</updated>
-    <id>http://variia.github.io/integrating-networks-vpn-amazon-vpc</id>
+    <id>https://ivanvari.com/integrating-networks-vpn-amazon-vpc</id>
     <content type="html"><![CDATA[<p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
 This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
 should your resource requirements increase and so forth.</p>
@@ -1571,7 +1571,7 @@ in / out. So if I have to have an instance doing SNAT for outgoing Internet insi
 
 <h4>Build your VPC</h4>
 
-<p><img src="http://variia.github.io/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
 
 <p>I will not going into too much detail here, just share the important bits I encountered during my setup. The Amazon guide is well written, please read it for full understanding
 of the <a href="http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Scenario2.html" target="_blank">concept</a>.</p>
@@ -1726,9 +1726,9 @@ VPC for additional safety.</p>
   
   <entry>
     <title type="html"><![CDATA[Couchbase Quota Explained]]></title>
-    <link href="http://variia.github.io/couchbase-quota-explained/"/>
+    <link href="https://ivanvari.com/couchbase-quota-explained/"/>
     <updated>2013-10-16T00:28:13+02:00</updated>
-    <id>http://variia.github.io/couchbase-quota-explained</id>
+    <id>https://ivanvari.com/couchbase-quota-explained</id>
     <content type="html"><![CDATA[<p>For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
 we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,
 disk is used for persistence only. It turns out that in this condition your usable RAM is lot less, 2 thirds of your allocated quota.</p>
@@ -1740,7 +1740,7 @@ disk is used for persistence only. It turns out that in this condition your usab
 on keys, etc. So what we do is essentially oversize the buckets initially (as long as we can afford it with RAM of course), then observe and perhaps adjust it later on
 but this gets harder when you start utilising your cluster RAM.</p>
 
-<p><img src="http://variia.github.io/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
+<p><img src="https://ivanvari.com/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
 
 <p>I had a solid understanding of the &ldquo;mem_low_wat&rdquo; and &ldquo;mem_high_wat&rdquo; watermarks, I just didn&rsquo;t know their impact and how their values are calculated.
 The <a href="http://www.couchbase.com/docs/couchbase-manual-2.0/couchbase-introduction-architecture-ejection-eviction.html" target="_blank">working set management guide</a>
@@ -1774,9 +1774,9 @@ If an application is not coded to handle this type of exception, writes/reads ma
   
   <entry>
     <title type="html"><![CDATA[Couchbase 1.8 Persistence]]></title>
-    <link href="http://variia.github.io/couchbase-1-8-persistence/"/>
+    <link href="https://ivanvari.com/couchbase-1-8-persistence/"/>
     <updated>2013-05-21T13:34:53+02:00</updated>
-    <id>http://variia.github.io/couchbase-1-8-persistence</id>
+    <id>https://ivanvari.com/couchbase-1-8-persistence</id>
     <content type="html"><![CDATA[<p><a href="http://www.couchbase.com" target="_blank">Couchbase</a> 1.8 supports two types of buckets but the <em>memcached</em> bucket is limited, does not
 support persistence, failover so this article is about the <em>couchbase</em> bucket type and its maintenance.</p>
 
@@ -1814,7 +1814,7 @@ testing.</p>
 it up. We set the expiry immediately in our code to 7 days, but it only affected newly created keys so we had to wait 4 weeks before we actually saw
 our store reducing in size.</p>
 
-<p><img src="http://variia.github.io/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
+<p><img src="https://ivanvari.com/images/2013-05/971B1CF6-BE65-11E2-9FAE-001D095D855C.png" /></p>
 
 <p>Our bucket <strong>started reducing</strong> in size around January <strong>but only in memory</strong>, the green area representing the disk usage remained the same.</p>
 
@@ -1893,9 +1893,9 @@ At last but not least re-enable your <em>auto failover</em> when all of your nod
   
   <entry>
     <title type="html"><![CDATA[Hands-on With Couchbase]]></title>
-    <link href="http://variia.github.io/hands-on-with-couchbase/"/>
+    <link href="https://ivanvari.com/hands-on-with-couchbase/"/>
     <updated>2013-05-12T09:42:09+02:00</updated>
-    <id>http://variia.github.io/hands-on-with-couchbase</id>
+    <id>https://ivanvari.com/hands-on-with-couchbase</id>
     <content type="html"><![CDATA[<p>It&rsquo;s been a long a long time coming, hard work has finally paid off and the last 7 months feels like just only few weeks.
 <a href="http://www.couchbase.com" target="_blank">Couchbase</a> is now our primary NoSQL (key-value) store for production
 and we are impressed with the results. This article is about our hands-on experience, benchmarking results and its associated
@@ -2032,7 +2032,7 @@ was constantly running during our benchmarks tests)</li>
 
 <h2>Results and Conclusion</h2>
 
-<p>  <img src="http://variia.github.io/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
+<p>  <img src="https://ivanvari.com/images/2013-05/388BBE55-372F-4C56-86C8-61334B06579A.png" alt="console" /></p>
 
 <ul>
 <li>Couchbase scaled very well during our test, we achieved <strong>400 000 GET requests / second</strong> with an average latency of <strong>400us (micro-second)</strong>, 99th = 4ms

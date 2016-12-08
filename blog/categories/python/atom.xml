@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Python | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/python/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/python/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Merging Pillars in SaltStack]]></title>
-    <link href="http://variia.github.io/merging-pillars-in-saltstack/"/>
+    <link href="https://ivanvari.com/merging-pillars-in-saltstack/"/>
     <updated>2014-08-16T23:26:41+02:00</updated>
-    <id>http://variia.github.io/merging-pillars-in-saltstack</id>
+    <id>https://ivanvari.com/merging-pillars-in-saltstack</id>
     <content type="html"><![CDATA[<p>Merging or joining <a href="http://salt.readthedocs.org/en/latest/topics/pillar/" target="_blank">Pillars</a> in SaltStack is supported but somewhat limited. It took me some
 time to work out a clean solution to support a specific manipulation so to make this easier, I am going to share my real life example.</p>
 
@@ -188,9 +188,9 @@ a dictionary update on specific objects from a specific nested key. To me it is 
   
   <entry>
     <title type="html"><![CDATA[Running Pylint in PyCharm]]></title>
-    <link href="http://variia.github.io/running-pylint-in-pycharm/"/>
+    <link href="https://ivanvari.com/running-pylint-in-pycharm/"/>
     <updated>2014-07-03T00:41:28+02:00</updated>
-    <id>http://variia.github.io/running-pylint-in-pycharm</id>
+    <id>https://ivanvari.com/running-pylint-in-pycharm</id>
     <content type="html"><![CDATA[<p>I really liked the <a href="http://www.pylint.org" target="_blank">Pylint </a>integration in Eclipse/Pydev but I have switched to
 <a href="http://www.jetbrains.com/pycharm/" target="_blank">PyCharm</a> since JetBrains released CE edition. Pycharm supports
 <a href="http://legacy.python.org/dev/peps/pep-0008/" target="_blank">PEP8 </a>auditing &ldquo;out of the box&rdquo;, but I found out lately, that it is a little &ldquo;loose&rdquo; on style
@@ -208,7 +208,7 @@ preference, etc. so the installation is out of the scope of this guide.</p>
 
 <h4>Create an external tool:</h4>
 
-<p><img src="http://variia.github.io/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/968C2439-5AFA-4B48-8094-8895F3C8A3C5-1404279043311.png" /></p>
 
 <p>My pylint config is fairly simple, nearly stock standard so I simply added my customisation to the &ldquo;parameters&rdquo; line, but for more complex setups, I strongly recommend setting
 up <code>.pylintrc</code> in your HOME then adding your config file to the parameter line as an argument. This basically pipes your code through pylint and displays the results in the &ldquo;run&rdquo;
@@ -216,7 +216,7 @@ console.</p>
 
 <h4>Configure output filter:</h4>
 
-<p><img src="http://variia.github.io/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/B380E5C8-39A2-4C43-BFE2-E8796EE4F5A4.png" /></p>
 
 <p>These will create an XML config that looks like this on OSX:</p>
 
@@ -238,7 +238,7 @@ console.</p>
 
 <p>As the description says, this will essentially give you quick <em>jump links</em> to the parts of your code where the non-compliant code is.</p>
 
-<p><img src="http://variia.github.io/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-07/A6605616-D1FD-4FFB-B67C-C87D80B331D6.png" /></p>
 
 <p>Clicking on any of the blue lines will simply navigate you to the line where the issue is, and adding <em>keymap</em> to this tool can improve your workflow too.</p>
 ]]></content>
@@ -246,9 +246,9 @@ console.</p>
   
   <entry>
     <title type="html"><![CDATA[Script to Clone SaltStack Formulas From GitHub]]></title>
-    <link href="http://variia.github.io/script-clone-saltstack-formulas-github/"/>
+    <link href="https://ivanvari.com/script-clone-saltstack-formulas-github/"/>
     <updated>2014-05-23T19:44:01+02:00</updated>
-    <id>http://variia.github.io/script-clone-saltstack-formulas-github</id>
+    <id>https://ivanvari.com/script-clone-saltstack-formulas-github</id>
     <content type="html"><![CDATA[<p>I am heavily into <a href="https://www.saltstack.com" target="_blank">Salt infrastructure management</a> at the moment, and wish to leverage all available (community written)
 formulas. Luckily, the SaltStack group maintains a collection of excellent formulas on their <a href="https://github.com/saltstack-formulas" target="_blank">github page</a>,
 and they are great source for states, ideas, best practices, etc. So I started cloning them, first the ones that I really needed. Then I realized later on, that some I may

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Amazon Web Services | Ivan Vari]]></title>
-  <link href="http://variia.github.io/blog/categories/amazon-web-services/atom.xml" rel="self"/>
-  <link href="http://variia.github.io/"/>
-  <updated>2016-10-18T07:43:37+02:00</updated>
-  <id>http://variia.github.io/</id>
+  <link href="https://ivanvari.com/blog/categories/amazon-web-services/atom.xml" rel="self"/>
+  <link href="https://ivanvari.com/"/>
+  <updated>2016-12-08T21:38:26+01:00</updated>
+  <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Integrating Networks Over VPN With Amazon VPC]]></title>
-    <link href="http://variia.github.io/integrating-networks-vpn-amazon-vpc/"/>
+    <link href="https://ivanvari.com/integrating-networks-vpn-amazon-vpc/"/>
     <updated>2014-05-19T00:21:58+02:00</updated>
-    <id>http://variia.github.io/integrating-networks-vpn-amazon-vpc</id>
+    <id>https://ivanvari.com/integrating-networks-vpn-amazon-vpc</id>
     <content type="html"><![CDATA[<p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
 This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
 should your resource requirements increase and so forth.</p>
@@ -67,7 +67,7 @@ in / out. So if I have to have an instance doing SNAT for outgoing Internet insi
 
 <h4>Build your VPC</h4>
 
-<p><img src="http://variia.github.io/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
+<p><img src="https://ivanvari.com/images/2014-05/24F4919D-CEFE-48D3-A811-D6BBDC7D2CF9.png" /></p>
 
 <p>I will not going into too much detail here, just share the important bits I encountered during my setup. The Amazon guide is well written, please read it for full understanding
 of the <a href="http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Scenario2.html" target="_blank">concept</a>.</p>
