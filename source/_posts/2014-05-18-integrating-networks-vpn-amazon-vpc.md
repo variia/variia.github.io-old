@@ -114,6 +114,11 @@ Create another custom "route" object, associate it with your "private" VPC subne
 This will add default route to all instances for your "private" VPC subnet via the router EC2 instance. This "route" object can be then associated with any other "private"
 subnet you may create later on and required to support outgoing Internet access.
 
+To be able to route any private subnet via your router EC2 instance, you MUST disable source and destination check on the associated network interface object.
+
+``` bash
+$ aws --region eu-central-1 ec2 modify-network-interface-attribute --network-interface-id "eni-12f235ec" --no-source-dest-check
+```
 
 #### Prepare the OpenVPN Server on pfSense
 
