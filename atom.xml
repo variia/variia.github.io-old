@@ -4,7 +4,7 @@
   <title><![CDATA[Ivan Vari]]></title>
   <link href="https://ivanvari.com/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2016-12-16T07:49:00+01:00</updated>
+  <updated>2017-01-23T18:14:02+01:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -1637,6 +1637,13 @@ will not be able to use the VPN router instance!</p>
 
 <p>This will add default route to all instances for your &ldquo;private&rdquo; VPC subnet via the router EC2 instance. This &ldquo;route&rdquo; object can be then associated with any other &ldquo;private&rdquo;
 subnet you may create later on and required to support outgoing Internet access.</p>
+
+<p>To be able to route any private subnet via your router EC2 instance, you MUST disable source and destination check on the associated network interface object.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws --region eu-central-1 ec2 modify-network-interface-attribute --network-interface-id <span class="s2">&quot;eni-12f235ec&quot;</span> --no-source-dest-check
+</span></code></pre></td></tr></table></div></figure>
+
 
 <h4>Prepare the OpenVPN Server on pfSense</h4>
 
