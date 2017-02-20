@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Network | Ivan Vari]]></title>
   <link href="https://ivanvari.com/blog/categories/network/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2017-01-23T18:14:02+01:00</updated>
+  <updated>2017-02-20T19:14:59+01:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,93 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Solving Poor Network Performance on RHEL and CentOS 7]]></title>
+    <link href="https://ivanvari.com/solving-poor-performance-on-rhel-and-centos-7/"/>
+    <updated>2017-02-16T17:15:57+01:00</updated>
+    <id>https://ivanvari.com/solving-poor-performance-on-rhel-and-centos-7</id>
+    <content type="html"><![CDATA[<p>We are building the next generation online marketplace and part of it is a real-time Java application. This application is heavily optimised for its use case,
+handles zillions of short-lived tcp requests fast. Most of our operations complete quickly (&lt;100ms) and some even more quickly (&lt;500us).</p>
+
+<p>Our old application pool is based on CentOS 6 nodes and we are doing considerably well on them. However recently, we deployed our new CentOS 7 based server
+farm and for some reason, we have been unable to meet the expectations set by the old pool.</p>
+
+<!--more-->
+
+
+<p>We set these nodes identically, turned off CPU scaling, disabled THP, set IO elevators, etc. Everything looked fine, but the first impressions were that these new
+nodes have slightly higher load and deliver less.</p>
+
+<p>This was a bit frustrating.</p>
+
+<p>We got newer kernel, newer OS, newer drivers, everything is set the same way, but for some reason, we just could not squeeze the same amount of juice out of these
+new servers compared to the old ones.</p>
+
+<p>During our observation, we noticed that the interrupts on these new nodes were much higher (~30k+), compared to the old servers but I failed to follow upon it at
+that point.</p>
+
+<h2>Tuned performance profiles</h2>
+
+<p>Up until recently, it did not occur to me that there are key differences in CentOS 7&rsquo;s and CentOS 6&rsquo;s <code>latency-performance</code> profile.</p>
+
+<p>Looking at the <code>tuned</code> documentation and the profiles, it looked like there is a more advanced profile available called <code>network-latency</code>, and it is a child profile
+of my current <code>latency-performance</code> profile.</p>
+
+<pre><code class="bash">$ rpm -ql tuned | grep tuned.conf
+/etc/dbus-1/system.d/com.redhat.tuned.conf
+/etc/modprobe.d/tuned.conf
+/usr/lib/tmpfiles.d/tuned.conf
+/usr/lib/tuned/balanced/tuned.conf
+/usr/lib/tuned/desktop/tuned.conf
+/usr/lib/tuned/latency-performance/tuned.conf
+/usr/lib/tuned/network-latency/tuned.conf
+/usr/lib/tuned/network-throughput/tuned.conf
+/usr/lib/tuned/powersave/tuned.conf
+/usr/lib/tuned/throughput-performance/tuned.conf
+/usr/lib/tuned/virtual-guest/tuned.conf
+/usr/lib/tuned/virtual-host/tuned.conf
+/usr/share/man/man5/tuned.conf.5.gz
+
+$ grep . /usr/lib/tuned/network-latency/tuned.conf | grep -v \#
+[main]
+summary=Optimize for deterministic performance at the cost of increased power consumption, focused on low latency network performance
+include=latency-performance
+[vm]
+transparent_hugepages=never
+[sysctl]
+net.core.busy_read=50
+net.core.busy_poll=50
+net.ipv4.tcp_fastopen=3
+kernel.numa_balancing=0
+</code></pre>
+
+<p>What it does additionally, is that it turns <code>numa_balancing</code> off, disables THP and makes some <code>net.core</code> kernel tweaks.</p>
+
+<p>After activating this profile, we can see the effect immediately.</p>
+
+<pre><code class="bash">$ tuned-adm profile network-latency
+$ tuned-adm active
+Current active profile: network-latency
+</code></pre>
+
+<p><img src="https://ivanvari.com/images/2017-01/D97E625A-920D-40B8-9E77-2BFB1F720499.png" /></p>
+
+<p>My interrupts drop from a whopping 70k down to 40k, which is exactly what my CentOS 6 interrupts measure during peak load.</p>
+
+<p>I could not stop there and I started experimenting with these settings and found, that the interrupts are directly affected by the <code>numa_balancing</code> kernel setting.
+Restoring <code>numa_balancing</code> puts the interrupt pressure back on the system immediately.</p>
+
+<pre><code class="bash ENABLE numa_balancing">$ echo 1 &gt; /proc/sys/kernel/numa_balancing
+</code></pre>
+
+<pre><code class="bash DISABLE numa_balancing">$ echo 0 &gt; /proc/sys/kernel/numa_balancing
+</code></pre>
+
+<p>Please note, that this profile is for a specific workload. Turning <code>numa_balancing</code> off may improve your interrupts but it can degrade your application some other way.
+Experiement with the available profiles and stick to the one that gives you the best results.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>

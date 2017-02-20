@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Couchbase Quota Explained - Ivan Vari</title>
+  <title>Category: Linux - Ivan Vari</title>
   <meta name="author" content="Ivan Vari">
 
   
-  <meta name="description" content="Couchbase quota is a simple thing but misunderstanding or misconfiguring its limits can have impact on your performance or data integrity.">
-  <meta name="keywords" content="couchbase,quota,explained,persitence,memory limits,resident ratio">
+  <meta name="description" content="Category: linux">
+  
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="https://ivanvari.com/couchbase-quota-explained/">
+  <link rel="canonical" href="https://ivanvari.com/blog/categories/linux/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Ivan Vari" type="application/atom+xml">
@@ -89,118 +89,36 @@
   <div id="main">
     <div id="content">
       <div>
-<article class="hentry" role="article">
+<article role="article">
   
   <header>
-    
-      <h1 class="entry-title">Couchbase Quota Explained</h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-10-16T00:28:13+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:28 am</span></time>
-        
-      </p>
+    <h1 class="entry-title">Category: Linux</h1>
     
   </header>
-
-
-<div class="entry-content"><p>For modern, high performance web applications we need low latency and Couchbase excels in that. To maintain the lowest possible latency even during node failure,
-we need to achieve 100% resident ratio for our high performance buckets. This means that Couchbase serves all your data from RAM, even the least frequently accessed ones,
-disk is used for persistence only. It turns out that in this condition your usable RAM is lot less, 2 thirds of your allocated quota.</p>
-
-<!--more-->
-
-
-<p>I always found it hard to come up with a number for bucket quota. It depends on the key size which can vary, the number of keys expected to be stored, your expiry
-on keys, etc. So what we do is essentially oversize the buckets initially (as long as we can afford it with RAM of course), then observe and perhaps adjust it later on
-but this gets harder when you start utilising your cluster RAM.</p>
-
-<p><img src="/images/2013-10/CFDD97C6-310B-11E3-AD2F-001D095D855C.jpg" /></p>
-
-<p>I had a solid understanding of the &ldquo;mem_low_wat&rdquo; and &ldquo;mem_high_wat&rdquo; watermarks, I just didn&rsquo;t know their impact and how their values are calculated.
-The <a href="http://www.couchbase.com/docs/couchbase-manual-2.0/couchbase-introduction-architecture-ejection-eviction.html" target="_blank">working set management guide</a>
-explains this, I am not going to repeat what is discussed in that, just reflect what happens in real life.</p>
-
-<p>In my case the default ratio (per bucket):</p>
-
-<p><strong>mem_low_wat = ~60%</strong> (of your dynamic RAM quota)</p>
-
-<p><strong>mem_high_wat = ~75%</strong> (of your dynamic RAM quota)</p>
-
-<blockquote><p>In nutshell: when a certain amount of RAM is consumed by items, the server will eject items starting with replica data. This threshold is known as the low water mark.
-If higher threshold is breached, Couchbase Server will not only eject replica data, it will also eject less-frequently used items.</p>
-
-<p>This ejection happens at node level.</p></blockquote>
-
-<p>I have always monitored both, the resident ratios and of course the quotas but missed the &ldquo;low&rdquo; and especially the &ldquo;high&rdquo; watermarks. This turned out to be problematic
-in the last couple of weeks, our cluster lost it&rsquo;s harmony and we started fetching from disk which adds an extra 100-200us latency to our average GETs occasionally.
-One of my buckets is somewhat large, currently the quota is set to 100GB (400GB across 4 nodes) and the bucket holds 500+ Million keys. If you consider the ratio above,
-the default behaviour sets the &ldquo;mem_high_wat&rdquo; to 100GB, that is a lot of RAM to be wasted!</p>
-
-<p><strong>Explanation:</strong></p>
-
-<p>In layman&rsquo;s term:  it&rsquo;s a buffer, it&rsquo;s a protection against unexpected large write spike, node failure, manual failover, rebalance, etc. If the bucket&rsquo;s memory usage
-reaches 90% of its quota allocation, the application would start throwing &ldquo;temporary out of memory errors&rdquo; which would of course need to be handled some ways.
-If an application is not coded to handle this type of exception, writes/reads may fail.</p>
-
-<p>While these watermarks can be changed on per node / per bucket basis, it&rsquo;s strongly recommended not to do so as it can potentially put your data at risk.</p>
-</div>
-
-
-  <footer>
-    <p class="meta">
-      
   
-
-<span class="byline author vcard">Posted by <span class="fn">Ivan Vari</span></span>
-
-      
+  <div id="blog-archives" class="category">
 
 
 
-
-<time class='entry-date' datetime='2013-10-16T00:28:13+02:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:28 am</span></time>
-      
-
-<span class="categories">
   
-    <a class='category' href='/blog/categories/clustering/'>clustering</a>, <a class='category' href='/blog/categories/database/'>database</a>
+  <h2>2017</h2>
+
+<article>
   
-</span>
+<h1><a href="/solving-poor-performance-on-rhel-and-centos-7/">Solving Poor Network Performance on RHEL and CentOS 7</a></h1>
+<time datetime="2017-02-16T17:15:57+01:00" pubdate><span class='month'>Feb</span> <span class='day'>16</span> <span class='year'>2017</span></time>
+
+<footer>
+  <span class="categories">posted in <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/network/'>network</a></span>
+</footer>
 
 
-    </p>
-    
-      <div class="sharing">
-  
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="https://ivanvari.com/couchbase-quota-explained/" data-via="" data-counturl="https://ivanvari.com/couchbase-quota-explained/" >Tweet</a>
-  
-  
-  
-</div>
-
-    
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/couchbase-1-8-persistence/" title="Previous Post: Couchbase 1.8 Persistence">&laquo; Couchbase 1.8 Persistence</a>
-      
-      
-        <a class="basic-alignment right" href="/integrating-networks-vpn-amazon-vpc/" title="Next Post: Integrating networks over VPN with Amazon VPC">Integrating networks over VPN with Amazon VPC &raquo;</a>
-      
-    </p>
-  </footer>
 </article>
 
-  <section>
-    <h1>Comments</h1>
-    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
 </div>
-  </section>
+
+  
+</article>
 
 </div>
 
@@ -278,10 +196,7 @@ If an application is not coded to handle this type of exception, writes/reads ma
       var disqus_shortname = 'ivanvari-com';
       
         
-        // var disqus_developer = 1;
-        var disqus_identifier = 'https://ivanvari.com/couchbase-quota-explained/';
-        var disqus_url = 'https://ivanvari.com/couchbase-quota-explained/';
-        var disqus_script = 'embed.js';
+        var disqus_script = 'count.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

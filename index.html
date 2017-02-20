@@ -9,7 +9,7 @@
   <meta name="author" content="Ivan Vari">
 
   
-  <meta name="description" content="Quick and dirty guide about how to create conditional SNAT with iRule on F5 and rewrite (NAT) IP addresses based on specific conditions. We have 2 &hellip;">
+  <meta name="description" content="We are building the next generation online marketplace and part of it is a real-time Java application. This application is heavily optimised for its &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -90,6 +90,44 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/solving-poor-performance-on-rhel-and-centos-7/">Solving Poor Network Performance on RHEL and CentOS 7</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-16T17:15:57+01:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>5:15 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>We are building the next generation online marketplace and part of it is a real-time Java application. This application is heavily optimised for its use case,
+handles zillions of short-lived tcp requests fast. Most of our operations complete quickly (&lt;100ms) and some even more quickly (&lt;500us).</p>
+
+<p>Our old application pool is based on CentOS 6 nodes and we are doing considerably well on them. However recently, we deployed our new CentOS 7 based server
+farm and for some reason, we have been unable to meet the expectations set by the old pool.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/solving-poor-performance-on-rhel-and-centos-7/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -446,47 +484,6 @@ and I needed an automated solution to keep up to date with the changes.</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/integrating-networks-vpn-amazon-vpc/">Integrating Networks Over VPN With Amazon VPC</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-05-19T00:21:58+02:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:21 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><a href="https://aws.amazon.com/vpc/" target="_blank">Amazon VPC</a> has been out for some time offering full control of isolated local networking in the cloud.
-This means that you can have your own private subnet in the cloud, have control over what private IPs your instances are going to use, change the instance type,
-should your resource requirements increase and so forth.</p>
-
-<p>This guide is going to be technical, intended for experienced professionals where I will be discussing options and solutions to securely integrate your onsite
-(private) LANs with Amazon VPC. It is based on OpenVPN client running on an instance inside VPC, connecting to my remote branch firewall running pfSense 2.1.3
-and OpenVPN server. The point-to-point tunnel between the client / server is 2-way, both the client and the server expose their local networks and route traffic
-to the other side accordingly. But first, let&rsquo;s take a look at what other option we have.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/integrating-networks-vpn-amazon-vpc/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -521,6 +518,10 @@ to the other side accordingly. But first, let&rsquo;s take a look at what other 
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/solving-poor-performance-on-rhel-and-centos-7/">Solving Poor Network Performance on RHEL and CentOS 7</a>
+      </li>
+    
+      <li class="post">
         <a href="/conditional-snat-with-irule-on-f5/">Conditional SNAT With iRule on F5</a>
       </li>
     
@@ -536,19 +537,15 @@ to the other side accordingly. But first, let&rsquo;s take a look at what other 
         <a href="/wd-mycloud-2t-nas-review/">WD MyCloud 2T NAS Review</a>
       </li>
     
-      <li class="post">
-        <a href="/load-balancing-and-sticky-sessions-by-url-parameter/">Load Balancing and Sticky Sessions by URL Parameter</a>
-      </li>
-    
   </ul>
 </section>
 <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/network/'>network (3)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
+    <ul id="category-list"><li><a href='/blog/categories/amazon-web-services/'>amazon web services (1)</a></li><li><a href='/blog/categories/cloud/'>cloud (1)</a></li><li><a href='/blog/categories/clustering/'>clustering (3)</a></li><li><a href='/blog/categories/database/'>database (3)</a></li><li><a href='/blog/categories/hardware/'>hardware (1)</a></li><li><a href='/blog/categories/java/'>java (1)</a></li><li><a href='/blog/categories/linux/'>linux (1)</a></li><li><a href='/blog/categories/network/'>network (4)</a></li><li><a href='/blog/categories/python/'>python (3)</a></li><li><a href='/blog/categories/saltstack/'>saltstack (2)</a></li><li><a href='/blog/categories/security/'>security (2)</a></li></ul>
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 120.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 120.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 160.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 160.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 120.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 120.0%'>java(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(3)</a> <a href='/blog/categories/python' style='font-size: 160.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 140.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 140.0%'>security(2)</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/amazon-web-services' style='font-size: 115.0%'>amazon web services(1)</a> <a href='/blog/categories/cloud' style='font-size: 115.0%'>cloud(1)</a> <a href='/blog/categories/clustering' style='font-size: 145.0%'>clustering(3)</a> <a href='/blog/categories/database' style='font-size: 145.0%'>database(3)</a> <a href='/blog/categories/hardware' style='font-size: 115.0%'>hardware(1)</a> <a href='/blog/categories/java' style='font-size: 115.0%'>java(1)</a> <a href='/blog/categories/linux' style='font-size: 115.0%'>linux(1)</a> <a href='/blog/categories/network' style='font-size: 160.0%'>network(4)</a> <a href='/blog/categories/python' style='font-size: 145.0%'>python(3)</a> <a href='/blog/categories/saltstack' style='font-size: 130.0%'>saltstack(2)</a> <a href='/blog/categories/security' style='font-size: 130.0%'>security(2)</a> </span>
 </section>
 
   

@@ -4,7 +4,7 @@
   <title><![CDATA[Ivan Vari]]></title>
   <link href="https://ivanvari.com/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2017-01-23T18:14:02+01:00</updated>
+  <updated>2017-02-20T19:14:59+01:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,130 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Solving Poor Network Performance on RHEL and CentOS 7]]></title>
+    <link href="https://ivanvari.com/solving-poor-performance-on-rhel-and-centos-7/"/>
+    <updated>2017-02-16T17:15:57+01:00</updated>
+    <id>https://ivanvari.com/solving-poor-performance-on-rhel-and-centos-7</id>
+    <content type="html"><![CDATA[<p>We are building the next generation online marketplace and part of it is a real-time Java application. This application is heavily optimised for its use case,
+handles zillions of short-lived tcp requests fast. Most of our operations complete quickly (&lt;100ms) and some even more quickly (&lt;500us).</p>
+
+<p>Our old application pool is based on CentOS 6 nodes and we are doing considerably well on them. However recently, we deployed our new CentOS 7 based server
+farm and for some reason, we have been unable to meet the expectations set by the old pool.</p>
+
+<!--more-->
+
+
+<p>We set these nodes identically, turned off CPU scaling, disabled THP, set IO elevators, etc. Everything looked fine, but the first impressions were that these new
+nodes have slightly higher load and deliver less.</p>
+
+<p>This was a bit frustrating.</p>
+
+<p>We got newer kernel, newer OS, newer drivers, everything is set the same way, but for some reason, we just could not squeeze the same amount of juice out of these
+new servers compared to the old ones.</p>
+
+<p>During our observation, we noticed that the interrupts on these new nodes were much higher (~30k+), compared to the old servers but I failed to follow upon it at
+that point.</p>
+
+<h2>Tuned performance profiles</h2>
+
+<p>Up until recently, it did not occur to me that there are key differences in CentOS 7&rsquo;s and CentOS 6&rsquo;s <code>latency-performance</code> profile.</p>
+
+<p>Looking at the <code>tuned</code> documentation and the profiles, it looked like there is a more advanced profile available called <code>network-latency</code>, and it is a child profile
+of my current <code>latency-performance</code> profile.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rpm -ql tuned <span class="p">|</span> grep tuned.conf
+</span><span class='line'>/etc/dbus-1/system.d/com.redhat.tuned.conf
+</span><span class='line'>/etc/modprobe.d/tuned.conf
+</span><span class='line'>/usr/lib/tmpfiles.d/tuned.conf
+</span><span class='line'>/usr/lib/tuned/balanced/tuned.conf
+</span><span class='line'>/usr/lib/tuned/desktop/tuned.conf
+</span><span class='line'>/usr/lib/tuned/latency-performance/tuned.conf
+</span><span class='line'>/usr/lib/tuned/network-latency/tuned.conf
+</span><span class='line'>/usr/lib/tuned/network-throughput/tuned.conf
+</span><span class='line'>/usr/lib/tuned/powersave/tuned.conf
+</span><span class='line'>/usr/lib/tuned/throughput-performance/tuned.conf
+</span><span class='line'>/usr/lib/tuned/virtual-guest/tuned.conf
+</span><span class='line'>/usr/lib/tuned/virtual-host/tuned.conf
+</span><span class='line'>/usr/share/man/man5/tuned.conf.5.gz
+</span><span class='line'>
+</span><span class='line'><span class="nv">$ </span>grep . /usr/lib/tuned/network-latency/tuned.conf <span class="p">|</span> grep -v <span class="se">\#</span>
+</span><span class='line'><span class="o">[</span>main<span class="o">]</span>
+</span><span class='line'><span class="nv">summary</span><span class="o">=</span>Optimize <span class="k">for</span> deterministic performance at the cost of increased power consumption, focused on low latency network performance
+</span><span class='line'><span class="nv">include</span><span class="o">=</span>latency-performance
+</span><span class='line'><span class="o">[</span>vm<span class="o">]</span>
+</span><span class='line'><span class="nv">transparent_hugepages</span><span class="o">=</span>never
+</span><span class='line'><span class="o">[</span>sysctl<span class="o">]</span>
+</span><span class='line'>net.core.busy_read<span class="o">=</span>50
+</span><span class='line'>net.core.busy_poll<span class="o">=</span>50
+</span><span class='line'>net.ipv4.tcp_fastopen<span class="o">=</span>3
+</span><span class='line'>kernel.numa_balancing<span class="o">=</span>0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What it does additionally, is that it turns <code>numa_balancing</code> off, disables THP and makes some <code>net.core</code> kernel tweaks.</p>
+
+<p>After activating this profile, we can see the effect immediately.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>tuned-adm profile network-latency
+</span><span class='line'><span class="nv">$ </span>tuned-adm active
+</span><span class='line'>Current active profile: network-latency
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="https://ivanvari.com/images/2017-01/D97E625A-920D-40B8-9E77-2BFB1F720499.png" /></p>
+
+<p>My interrupts drop from a whopping 70k down to 40k, which is exactly what my CentOS 6 interrupts measure during peak load.</p>
+
+<p>I could not stop there and I started experimenting with these settings and found, that the interrupts are directly affected by the <code>numa_balancing</code> kernel setting.
+Restoring <code>numa_balancing</code> puts the interrupt pressure back on the system immediately.</p>
+
+<figure class='code'><figcaption><span>ENABLE numa_balancing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span><span class="nb">echo </span><span class="m">1</span> &gt; /proc/sys/kernel/numa_balancing
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>DISABLE numa_balancing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span><span class="nb">echo </span><span class="m">0</span> &gt; /proc/sys/kernel/numa_balancing
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Please note, that this profile is for a specific workload. Turning <code>numa_balancing</code> off may improve your interrupts but it can degrade your application some other way.
+Experiement with the available profiles and stick to the one that gives you the best results.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Conditional SNAT With iRule on F5]]></title>
