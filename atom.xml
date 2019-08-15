@@ -4,7 +4,7 @@
   <title><![CDATA[Ivan Vari]]></title>
   <link href="https://ivanvari.com/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2017-02-20T19:14:59+01:00</updated>
+  <updated>2019-08-15T10:45:50+02:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,175 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AWS MFA Enabled Console With Automated One Time Password]]></title>
+    <link href="https://ivanvari.com/aws-console-mfa-1password-otp-automation/"/>
+    <updated>2019-08-14T23:18:17+02:00</updated>
+    <id>https://ivanvari.com/aws-console-mfa-otp-automation</id>
+    <content type="html"><![CDATA[<p>Moving to AWS is challenging and fun at the same time. Since our migration progresses well, we have enabled enforced MFA
+for IAM accounts, that have Administrator access.</p>
+
+<p>With 1Password OTP, it is simple to setup and easy to use in the WebUI, but I felt there is room for an improvement
+for the API calls, <code>awscli</code> commands over my console session so I don&rsquo;t have to cut and paste every time my session
+token expires.</p>
+
+<!--more-->
+
+
+<p>First thing first, this requires <code>macOS</code> (OSX) operating system, <code>bash</code>, <code>awscli</code>, <code>jq</code> utilities and <code>1Password</code>.
+I assume that, the reader is familiar with the AWS tools and services used here including but not limited to IAM
+access, API keys, session tokens and so on.</p>
+
+<h2>AWS config</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>vim .aws/credentials
+</span><span class='line'>
+</span><span class='line'><span class="o">[</span>mysession-mfa<span class="o">]</span>
+</span><span class='line'><span class="nv">aws_access_key_id</span> <span class="o">=</span> XXXXXXXXXXXXXXXXXXXX
+</span><span class='line'><span class="nv">aws_secret_access_key</span> <span class="o">=</span> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+</span><span class='line'>
+</span><span class='line'><span class="o">[</span>mysession<span class="o">]</span>
+</span><span class='line'><span class="nv">aws_access_key_id</span> <span class="o">=</span>
+</span><span class='line'><span class="nv">aws_secret_access_key</span> <span class="o">=</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>mysession-mfa</code> is the profile name for your IAM access, you should already have an API key and secret configured. Since
+our MFA is enforced (the policy used for that is out of the scope of this post), this is very limited. I can only change
+my password, set MFA device and basics like that, so we only use it for MFA authentication, nothing else.</p>
+
+<p><code>mysession</code> is the profile name, that will be MFA authenticated and once done, allow me to switch to my Administrator
+role and become basically admin user of our account. This has NO key and secret configured, just a blank placeholder.</p>
+
+<h2>System requirements</h2>
+
+<p>Ensure you have <code>bash</code> as your shell, have <code>jq</code> and at last but least have <code>awscli</code> installed. The name of your <code>1Password</code>
+wallet entry, where you have the OTP configured is also crucial. I tend to add the profile name to the title (in brackets)
+so it is easy to find: &lt;<strong>AWS IAM (mysession)</strong>></p>
+
+<h2>The bash function snippet</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>vim ~/.bashrc
+</span><span class='line'>
+</span><span class='line'>aws_mfa_auth <span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nv">accountid</span><span class="o">=</span><span class="k">${</span><span class="nv">1</span><span class="k">:-</span><span class="s2">&quot;123456789000&quot;</span><span class="k">}</span>
+</span><span class='line'>    <span class="nv">loginid</span><span class="o">=</span><span class="k">${</span><span class="nv">2</span><span class="k">:-</span><span class="s2">&quot;first.last@company.com&quot;</span><span class="k">}</span>
+</span><span class='line'>    <span class="nv">profileid</span><span class="o">=</span><span class="k">${</span><span class="nv">3</span><span class="k">:-</span><span class="s2">&quot;mysession&quot;</span><span class="k">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nb">printf</span> <span class="s2">&quot;Using account: $accountid\n&quot;</span>
+</span><span class='line'>    <span class="nb">printf</span> <span class="s2">&quot;Using login: $loginid\n&quot;</span>
+</span><span class='line'>    <span class="nb">printf</span> <span class="s2">&quot;Using profile: $profileid\n&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nv">AWS_MFA_ARN</span><span class="o">=</span><span class="s2">&quot;arn:aws:iam::$accountid:mfa/$loginid&quot;</span>
+</span><span class='line'>    <span class="nv">AWS_MFA_SESSION_DURATION</span><span class="o">=</span><span class="s2">&quot;28800&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    osascript -e <span class="s2">&quot;tell application \&quot;System Events\&quot; to tell process \&quot;1Password mini\&quot;&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;open location \&quot;onepassword://extension/search/$profileid\&quot;&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;end tell&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;delay 1&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;tell application \&quot;System Events\&quot; to tell process \&quot;1Password mini\&quot;&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;keystroke \&quot;c\&quot; using {command down, shift down, control down}&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;end tell&quot;</span> <span class="se">\</span>
+</span><span class='line'>              -e <span class="s2">&quot;delay 1&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nv">authcode</span><span class="o">=</span><span class="k">$(</span>pbpaste<span class="k">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nv">output</span><span class="o">=</span><span class="k">$(</span>aws --profile <span class="k">${</span><span class="nv">profileid</span><span class="k">}</span>-mfa sts get-session-token --serial-number <span class="k">${</span><span class="nv">AWS_MFA_ARN</span><span class="k">}</span> --duration-seconds <span class="k">${</span><span class="nv">AWS_MFA_SESSION_DURATION</span><span class="k">}</span> --token-code <span class="nv">$authcode</span><span class="k">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>jq -r <span class="s1">&#39;.Credentials.AccessKeyId&#39;</span> <span class="o">&lt;&lt;&lt;</span> <span class="nv">$output</span><span class="k">)</span>
+</span><span class='line'>    <span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>jq -r <span class="s1">&#39;.Credentials.SecretAccessKey&#39;</span> <span class="o">&lt;&lt;&lt;</span> <span class="nv">$output</span><span class="k">)</span>
+</span><span class='line'>    <span class="nv">AWS_SESSION_TOKEN</span><span class="o">=</span><span class="k">$(</span>jq -r <span class="s1">&#39;.Credentials.SessionToken&#39;</span> <span class="o">&lt;&lt;&lt;</span> <span class="nv">$output</span><span class="k">)</span>
+</span><span class='line'>
+</span><span class='line'>    aws configure <span class="nb">set </span>aws_access_key_id <span class="k">${</span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="k">}</span> --profile <span class="nv">$profileid</span>
+</span><span class='line'>    aws configure <span class="nb">set </span>aws_secret_access_key <span class="k">${</span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="k">}</span> --profile <span class="nv">$profileid</span>
+</span><span class='line'>    aws configure <span class="nb">set </span>aws_session_token <span class="k">${</span><span class="nv">AWS_SESSION_TOKEN</span><span class="k">}</span> --profile <span class="nv">$profileid</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">(</span>sleep <span class="k">${</span><span class="nv">AWS_MFA_SESSION_DURATION</span><span class="k">}</span> <span class="o">&amp;&amp;</span> osascript -e <span class="s2">&quot;display notification \&quot;MFA token expired\&quot; with title \&quot;AWS $profileid\&quot;&quot;</span> <span class="p">&amp;</span><span class="o">)</span>
+</span><span class='line'>    <span class="nb">exit </span>0
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As shown, the  <code>account</code>, <code>login</code> and <code>session</code> IDs have defaults but overridable. I tend to set the session duration to
+8+ hours so I don&rsquo;t have to authenticate multiple times a day especially when we are in heavy development.</p>
+
+<p><code>osascript</code> takes care of fetching the OTP password from the correct wallet entry and at completion, <code>awscli</code> updates
+the placeholder entry with the temp API key and secret.</p>
+
+<p>The last part is bonus: a basic desktop notification that the session token expired.</p>
+
+<p>Finally, just watch it doing its thing&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws_mfa_auth
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Once the shell window closed, you could open another and try anything that you have permissions for BUT remember to use
+your MFA session profile like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws ec2 describe-instances --region eu-central-1 --profile mysession --query <span class="s1">&#39;Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0],State.Name,PrivateIpAddress,PublicIpAddress]&#39;</span> --output text <span class="p">|</span> sort -k2 <span class="p">|</span> column -t
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This would list all running EC2 instances in a nice, column sorted window.</p>
+
+<h2>Gotchas</h2>
+
+<p>As of today, there is one issue that I have had no time to bypass yet. This solution does not wait for the wallet to be
+unlocked so if it is, it bombs out after few seconds. In the meantime, make sure <strong>your wallet is unlocked</strong> before
+running the function.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Solving Poor Network Performance on RHEL and CentOS 7]]></title>
