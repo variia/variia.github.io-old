@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Cloud | Ivan Vari]]></title>
   <link href="https://ivanvari.com/blog/categories/cloud/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2019-08-15T10:45:50+02:00</updated>
+  <updated>2019-08-16T14:09:55+02:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -12,6 +12,126 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AWS EKS StackSet Created Cluster Access Recovery]]></title>
+    <link href="https://ivanvari.com/aws-eks-stackset-cluster-access-recovery/"/>
+    <updated>2019-08-16T14:23:34+02:00</updated>
+    <id>https://ivanvari.com/aws-eks-stackset-cluster-access-recovery</id>
+    <content type="html"><![CDATA[<p>Kubernetes is contagious and nowadays hard to ignore. So we decided to look into EKS to see how it would work for
+our microservice suite. As of today, there are 2 ways of creating (official) an EKS cluster: <code>eksctl</code> via CLI or
+point and click through the Web-UI.</p>
+
+<p>We have multiple accounts and use services in multiple regions, so I developed a custom CloudFormation template to
+build our EKS cluster with StackSets. While this worked perfectly, I found an issue of not being able to access the
+cluster at all.</p>
+
+<!--more-->
+
+
+<p><a href="https://docs.aws.amazon.com/eks/latest/userguide/troubleshooting.html#unauthorized" target="_blank">It turned out to be perfectly normal</a>,
+since when an Amazon EKS cluster is created, the IAM entity (user or role) that creates the cluster is added to the
+Kubernetes RBAC authorization table as the administrator <em>(with system:master permissions)</em>. Initially, only that IAM
+user (initiated the cluster creation) can make calls to the Kubernetes API server using <code>kubectl</code>.</p>
+
+<h2>About StackSets</h2>
+
+<p><a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs.html" target="_blank">The basics of StackSets,</a>
+is that you create a role <strong>AWSCloudFormationStackSetAdministrationRole</strong> on your <strong>MASTER</strong> account (where the StackSet
+is launched from) and a role <strong>AWSCloudFormationStackSetExecutionRole</strong> on your <strong>TARGET</strong> account(s) where StackSets
+will manage CloudFormation stacks for you.</p>
+
+<h2>Assume role setup</h2>
+
+<p>So in this case, you need to make sure that your IAM user entity can assume (temporarily) the <strong>AWSCloudFormationStackSetExecutionRole</strong>.
+This can be done multiple ways, but the easiest would be to create a TEMP group, attach an inline policy to it and at
+completion, make your IAM user member of this TEMP group.</p>
+
+<p>The inline policy for your TEMP group:</p>
+
+<pre><code class="json">{
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "sts:AssumeRole"
+            ],
+            "Resource": [
+              "arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole",
+            ],
+            "Effect": "Allow"
+          }
+        ]
+}
+</code></pre>
+
+<p>The <code>&lt;123456789100&gt;</code> number is YOUR target account ID where the EKS cluster is created.</p>
+
+<p>Create a TEMP AWS config entry:</p>
+
+<pre><code class="bash">$ vim ~/.aws/config
+
+[profile eks-temp]
+region = eu-central-1
+role_arn = arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole
+source_profile = &lt;your_normal_iam_profile_name&gt;
+</code></pre>
+
+<p>Test your assume role before proceeding:</p>
+
+<pre><code class="bash">$ aws --profile eks-temp sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name test
+</code></pre>
+
+<h2>Update Kubernetes RBAC</h2>
+
+<p><a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html" target="_blank">Get the ConfigMap template</a> from AWS:</p>
+
+<pre><code class="bash">$ curl -o aws-auth-cm.yaml https://amazon-eks.s3-us-west-2.amazonaws.com/cloudformation/2019-02-11/aws-auth-cm.yaml
+</code></pre>
+
+<p>Edit it:</p>
+
+<pre><code class="YAML">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::123456789100:role/StackSet-EKS-c4c34dcd-45as-11-NodeInstanceRole-34F45DD54RSKK
+      username: system:node:
+      groups:
+        - system:bootstrappers
+        - system:nodes
+    - rolearn: arn:aws:iam::123456789100:role/Administrator
+      username: eks-admins
+      groups:
+        - system:masters 
+</code></pre>
+
+<p>The first element of the <code>mapRoles</code> array was added by AWS during cluster creation, we just need to extend it
+and add our required access details. In my case a special role <code>Administrator</code> that only certain users
+can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html" target="_blank">you could also add IAM user arn.</a></p>
+
+<p>When ready, get a copy of your cluster config then update the cluster:</p>
+
+<pre><code class="bash">$ aws --profile &lt;your profile&gt; --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
+$ kubectl apply -f aws-auth-cm.yaml
+</code></pre>
+
+<p>From this point on, your normal IAM user profile should be able to access the cluster:</p>
+
+<pre><code class="bash">$ kubectl get svc
+$ kubectl describe configmap -n kube-system aws-auth
+$ kubectl get namespace
+$ kubectl get nodes
+</code></pre>
+
+<h2>Clean up</h2>
+
+<p>Do not forget to remove the TEMP group and the TEMP AWS config profile at completion.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Integrating Networks Over VPN With Amazon VPC]]></title>
