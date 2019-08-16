@@ -10,7 +10,7 @@ categories:
   - Amazon Web Services
   - Cloud
 tags:
-  - amazon
+  - aws
   - cloud
   - vpc
   - ec2

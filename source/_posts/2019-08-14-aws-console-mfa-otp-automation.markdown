@@ -4,11 +4,12 @@ date: 2019-08-14 22:18:17 +0100
 author: Ivan Vari
 layout: post
 permalink: /aws-console-mfa-1password-otp-automation/
-description: Bash solution, which fetches the OTP from 1Password wallet for MFA enabled AWS console session without user interaction"
+description: Bash solution, which fetches the OTP from 1Password wallet for MFA enabled AWS console session without user interaction
 keywords: osx,macos,otp,1password,aws,mfa,automation,shell,bash,solved
 categories:
   - macOS
   - Security
+  - Amazon Web Services
 tags:
   - osx
   - macos
