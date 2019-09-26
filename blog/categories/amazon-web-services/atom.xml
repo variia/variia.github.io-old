@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Amazon Web Services | Ivan Vari]]></title>
   <link href="https://ivanvari.com/blog/categories/amazon-web-services/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2019-08-16T14:09:55+02:00</updated>
+  <updated>2019-09-26T12:59:57+02:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -71,7 +71,7 @@ completion, make your IAM user member of this TEMP group.</p>
 
 <pre><code class="bash">$ vim ~/.aws/config
 
-[profile eks-temp]
+[profile eks]
 region = eu-central-1
 role_arn = arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole
 source_profile = &lt;your_normal_iam_profile_name&gt;
@@ -79,7 +79,7 @@ source_profile = &lt;your_normal_iam_profile_name&gt;
 
 <p>Test your assume role before proceeding:</p>
 
-<pre><code class="bash">$ aws --profile eks-temp sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name test
+<pre><code class="bash">$ aws --profile eks sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name test
 </code></pre>
 
 <h2>Update Kubernetes RBAC</h2>
@@ -91,7 +91,9 @@ source_profile = &lt;your_normal_iam_profile_name&gt;
 
 <p>Edit it:</p>
 
-<pre><code class="YAML">apiVersion: v1
+<p>
+<code>YAML
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: aws-auth
@@ -99,24 +101,36 @@ metadata:
 data:
   mapRoles: |
     - rolearn: arn:aws:iam::123456789100:role/StackSet-EKS-c4c34dcd-45as-11-NodeInstanceRole-34F45DD54RSKK
-      username: system:node:
+      username: system:node:{{EC2PrivateDNSName}}
       groups:
         - system:bootstrappers
         - system:nodes
     - rolearn: arn:aws:iam::123456789100:role/Administrator
-      username: eks-admins
+      username: admin
       groups:
-        - system:masters 
+        - system:masters
+</code>
+</p>
+
+<p>The first element of the <code>mapRoles</code> is required for the worker nodes, so they can join the cluster automatically.
+For this, you need to get the ARN of the InstanceRole that is attached to your nodes, normally it is generated
+on the fly when the stack is created.</p>
+
+<p>The second element is our required admin access details. In my case a special role <code>Administrator</code>, that only certain
+users can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html"
+target="_blank">you could also add IAM user arn.</a></p>
+
+<p>When ready, get a copy of your cluster config with your new TEMP profile, then update the cluster:</p>
+
+<pre><code class="bash">$ aws --profile eks --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
+$ kubectl apply -f aws-auth-cm.yaml
 </code></pre>
 
-<p>The first element of the <code>mapRoles</code> array was added by AWS during cluster creation, we just need to extend it
-and add our required access details. In my case a special role <code>Administrator</code> that only certain users
-can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html" target="_blank">you could also add IAM user arn.</a></p>
+<p>At completion, delete the kube config you got with your TEMP profile, get a new one with your normal
+aws profile. Alternatively, edit the config and update the AWS_PROFILE key at the bottom&hellip;</p>
 
-<p>When ready, get a copy of your cluster config then update the cluster:</p>
-
-<pre><code class="bash">$ aws --profile &lt;your profile&gt; --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
-$ kubectl apply -f aws-auth-cm.yaml
+<pre><code>$ rm ~/.kube/config
+$ aws --profile &lt;normal aws profile name&gt; --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
 </code></pre>
 
 <p>From this point on, your normal IAM user profile should be able to access the cluster:</p>

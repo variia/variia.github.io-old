@@ -4,7 +4,7 @@
   <title><![CDATA[Ivan Vari]]></title>
   <link href="https://ivanvari.com/atom.xml" rel="self"/>
   <link href="https://ivanvari.com/"/>
-  <updated>2019-08-16T14:09:55+02:00</updated>
+  <updated>2019-09-26T12:59:57+02:00</updated>
   <id>https://ivanvari.com/</id>
   <author>
     <name><![CDATA[Ivan Vari]]></name>
@@ -92,7 +92,7 @@ completion, make your IAM user member of this TEMP group.</p>
 <span class='line-number'>6</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>vim ~/.aws/config
 </span><span class='line'>
-</span><span class='line'><span class="o">[</span>profile eks-temp<span class="o">]</span>
+</span><span class='line'><span class="o">[</span>profile eks<span class="o">]</span>
 </span><span class='line'><span class="nv">region</span> <span class="o">=</span> eu-central-1
 </span><span class='line'><span class="nv">role_arn</span> <span class="o">=</span> arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole
 </span><span class='line'><span class="nv">source_profile</span> <span class="o">=</span> &lt;your_normal_iam_profile_name&gt;
@@ -104,7 +104,7 @@ completion, make your IAM user member of this TEMP group.</p>
 <p>Test your assume role before proceeding:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws --profile eks-temp sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name <span class="nb">test</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws --profile eks sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name <span class="nb">test</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -143,29 +143,45 @@ completion, make your IAM user member of this TEMP group.</p>
 </span><span class='line'><span class="l-Scalar-Plain">data</span><span class="p-Indicator">:</span>
 </span><span class='line'>  <span class="l-Scalar-Plain">mapRoles</span><span class="p-Indicator">:</span> <span class="p-Indicator">|</span>
 </span><span class='line'>    <span class="no">- rolearn: arn:aws:iam::123456789100:role/StackSet-EKS-c4c34dcd-45as-11-NodeInstanceRole-34F45DD54RSKK</span>
-</span><span class='line'>      <span class="no">username: system:node:</span>
+</span><span class='line'>      <span class="no">username: system:node:{{EC2PrivateDNSName}}</span>
 </span><span class='line'>      <span class="no">groups:</span>
 </span><span class='line'>        <span class="no">- system:bootstrappers</span>
 </span><span class='line'>        <span class="no">- system:nodes</span>
 </span><span class='line'>    <span class="no">- rolearn: arn:aws:iam::123456789100:role/Administrator</span>
-</span><span class='line'>      <span class="no">username: eks-admins</span>
+</span><span class='line'>      <span class="no">username: admin</span>
 </span><span class='line'>      <span class="no">groups:</span>
 </span><span class='line'>        <span class="no">- system:masters </span>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>The first element of the <code>mapRoles</code> array was added by AWS during cluster creation, we just need to extend it
-and add our required access details. In my case a special role <code>Administrator</code> that only certain users
-can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html" target="_blank">you could also add IAM user arn.</a></p>
+<p>The first element of the <code>mapRoles</code> is required for the worker nodes, so they can join the cluster automatically.
+For this, you need to get the ARN of the InstanceRole that is attached to your nodes, normally it is generated
+on the fly when the stack is created.</p>
 
-<p>When ready, get a copy of your cluster config then update the cluster:</p>
+<p>The second element is our required admin access details. In my case a special role <code>Administrator</code>, that only certain
+users can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html"
+target="_blank">you could also add IAM user arn.</a></p>
+
+<p>When ready, get a copy of your cluster config with your new TEMP profile, then update the cluster:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws --profile &lt;your profile&gt; --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>aws --profile eks --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
 </span><span class='line'><span class="nv">$ </span>kubectl apply -f aws-auth-cm.yaml
 </span></code></pre></td></tr></table></div></figure>
 
+
+<p>At completion, delete the kube config you got with your TEMP profile, get a new one with your normal
+aws profile. Alternatively, edit the config and update the AWS_PROFILE key at the bottom&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rm ~/.kube/config
+</span><span class='line'><span class="nv">$ </span>aws --profile &lt;normal aws profile name&gt; --region eu-central-1 eks update-kubeconfig --name &lt;eks cluster name you created&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
 
 <p>From this point on, your normal IAM user profile should be able to access the cluster:</p>
 
