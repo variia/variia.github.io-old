@@ -74,7 +74,7 @@ Create a TEMP AWS config entry:
 ``` bash
 $ vim ~/.aws/config
 
-[profile eks-temp]
+[profile eks]
 region = eu-central-1
 role_arn = arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole
 source_profile = <your_normal_iam_profile_name>
@@ -83,7 +83,7 @@ source_profile = <your_normal_iam_profile_name>
 Test your assume role before proceeding:
 
 ``` bash
-$ aws --profile eks-temp sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name test
+$ aws --profile eks sts assume-role --role-arn arn:aws:iam::123456789100:role/AWSCloudFormationStackSetExecutionRole --role-session-name test
 ```
 
 ## Update Kubernetes RBAC
@@ -96,6 +96,7 @@ $ curl -o aws-auth-cm.yaml https://amazon-eks.s3-us-west-2.amazonaws.com/cloudfo
 
 Edit it:
 
+{% raw %}
 ``` YAML
 apiVersion: v1
 kind: ConfigMap
@@ -110,21 +111,34 @@ data:
         - system:bootstrappers
         - system:nodes
     - rolearn: arn:aws:iam::123456789100:role/Administrator
-      username: eks-admins
+      username: admin
       groups:
         - system:masters 
 ```
+{% endraw %}
 
-The first element of the `mapRoles` array was added by AWS during cluster creation, we just need to extend it
-and add our required access details. In my case a special role `Administrator` that only certain users
-can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html" target="_blank">you could also add IAM user arn.</a>
+The first element of the `mapRoles` is required for the worker nodes, so they can join the cluster automatically.
+For this, you need to get the ARN of the InstanceRole that is attached to your nodes, normally it is generated 
+on the fly when the stack is created.
 
-When ready, get a copy of your cluster config then update the cluster:
+The second element is our required admin access details. In my case a special role `Administrator`, that only certain
+users can assume, but <a href="https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html"
+target="_blank">you could also add IAM user arn.</a>
+
+When ready, get a copy of your cluster config with your new TEMP profile, then update the cluster:
 
 ``` bash
-$ aws --profile <your profile> --region eu-central-1 eks update-kubeconfig --name <eks cluster name you created>
+$ aws --profile eks --region eu-central-1 eks update-kubeconfig --name <eks cluster name you created>
 $ kubectl apply -f aws-auth-cm.yaml
 ```
+
+At completion, delete the kube config you got with your TEMP profile, get a new one with your normal
+aws profile. Alternatively, edit the config and update the AWS_PROFILE key at the bottom...
+
+```
+$ rm ~/.kube/config
+$ aws --profile <normal aws profile name> --region eu-central-1 eks update-kubeconfig --name <eks cluster name you created>
+``` 
 
 From this point on, your normal IAM user profile should be able to access the cluster:
 
