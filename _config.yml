@@ -95,8 +95,11 @@ delicious_count: 3
 disqus_short_name: "ivanvari-com"
 disqus_show_comment_count: false
 
-# Google Analytics
+# Google Universal Analytics (deprecated, see below)
 google_analytics_tracking_id: UA-84719456-1
+
+# Google Analytics 4 from 2022.07.01 onwards
+google_analytics4_tracking_id: G-GST9H3668K
 
 # Facebook Like
 facebook_like: false
